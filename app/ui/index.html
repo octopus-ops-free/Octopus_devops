@@ -1,0 +1,2475 @@
+
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Octopus Ops 控制台</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-soft: #020617;
+      --accent: #22c55e;
+      --accent-soft: rgba(34,197,94,0.15);
+      --border-subtle: #1f2937;
+      --text-main: #e5e7eb;
+      --text-muted: #9ca3af;
+      --danger: #ef4444;
+      --warn: #f59e0b;
+    }
+    * { box-sizing:border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; background:var(--bg-soft); color:var(--text-main); }
+    header { background:linear-gradient(90deg,#0f172a,#020617); color:#fff; padding:10px 18px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1f2937; }
+    header .title { font-size:15px; font-weight:600; display:flex; align-items:center; gap:8px; }
+    header .title span.logo { width:18px; height:18px; border-radius:6px; background:radial-gradient(circle at 30% 30%,#22c55e,#020617); box-shadow:0 0 16px rgba(34,197,94,0.7); }
+    header .meta { font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:8px; }
+
+    .layout { display:flex; min-height:calc(100vh - 44px); }
+    .sidebar { width:210px; background:#020617; border-right:1px solid var(--border-subtle); padding:10px 8px; display:flex; flex-direction:column; gap:8px; }
+    .sidebar-section-title { font-size:11px; text-transform:uppercase; letter-spacing:0.06em; color:var(--text-muted); padding:4px 10px; }
+    .menu-btn {
+      border-radius:6px; padding:7px 10px; font-size:13px; display:flex; align-items:center;
+      gap:8px; border:1px solid transparent; background:transparent; color:var(--text-main); cursor:pointer; width:100%; text-align:left;
+    }
+    .menu-btn span.icon { width:16px; text-align:center; opacity:0.9; }
+    .menu-btn span.label { flex:1; }
+    .menu-btn span.badge { font-size:10px; padding:1px 6px; border-radius:999px; background:#1f2937; color:var(--text-muted); }
+    .menu-btn.active {
+      background:var(--accent-soft);
+      border-color:var(--accent);
+      box-shadow:0 0 0 1px rgba(34,197,94,0.2);
+    }
+    .menu-btn:hover:not(.active) { background:rgba(148,163,184,0.08); }
+
+    .content { flex:1; padding:14px 18px 18px; overflow:auto; }
+
+    .card { background:radial-gradient(circle at top left,#111827,#020617); border-radius:10px; padding:14px 16px; margin-bottom:14px; border:1px solid rgba(148,163,184,0.15); }
+    .card h2 { margin:0 0 8px; font-size:16px; }
+    .card h2 span.sub { font-size:11px; color:var(--text-muted); margin-left:6px; font-weight:400; }
+    label { display:block; margin:4px 0 2px; font-size:12px; color:var(--text-muted); }
+    input { padding:6px 8px; font-size:13px; width:100%; border-radius:6px; border:1px solid #1f2937; background:#020617; color:var(--text-main); }
+    input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 1px rgba(34,197,94,0.4); }
+    button { padding:6px 12px; font-size:13px; border-radius:999px; border:none; cursor:pointer; background:var(--accent); color:#020617; font-weight:500; }
+    button[disabled] { background:#4b5563; cursor:not-allowed; color:#d1d5db; }
+    button.secondary { background:#111827; color:var(--text-main); border:1px solid #374151; }
+
+    .row { display:flex; gap:12px; flex-wrap:wrap; }
+    .row > div { flex:1 1 200px; }
+    pre { background:#020617; color:#e5e7eb; padding:8px; border-radius:6px; max-height:260px; overflow:auto; font-size:12px; border:1px solid #111827; }
+    .status { font-size:12px; color:var(--text-muted); }
+    .pill { padding:2px 6px; border-radius:999px; font-size:11px; display:inline-block; }
+    .pill-ok { background:#dcfce7; color:#166534; }
+    .pill-warn { background:#fef9c3; color:#854d0e; }
+    .pill-crit { background:#fee2e2; color:#b91c1c; }
+
+    .grid-3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin-top:8px; }
+    .stat { padding:8px 10px; border-radius:8px; background:#020617; border:1px solid #111827; font-size:12px; }
+    .stat-label { color:var(--text-muted); margin-bottom:4px; }
+    .stat-value { font-size:16px; font-weight:600; }
+    .stat-sub { font-size:11px; color:var(--text-muted); margin-top:2px; }
+
+    canvas { width:100%; max-width:100%; border-radius:8px; background:#020617; border:1px solid #111827; }
+
+    .tab-page { display:none; }
+    .tab-page.active { display:block; }
+
+    .user-dropdown { position:relative; display:inline-flex; align-items:center; cursor:default; }
+    .user-name { padding:3px 8px; border-radius:999px; background:rgba(31,41,55,0.8); border:1px solid rgba(55,65,81,0.9); font-size:12px; }
+    .user-menu {
+      position:absolute;
+      right:0;
+      top:100%;
+      min-width:150px;
+      background:#020617;
+      border-radius:10px;
+      border:1px solid rgba(55,65,81,0.9);
+      box-shadow:0 18px 40px rgba(15,23,42,0.9);
+      padding:6px;
+      display:none;
+      z-index:1000;
+    }
+    .user-dropdown:hover .user-menu,
+    .user-menu:hover { display:block; }
+    .user-menu button {
+      width:100%;
+      padding:6px 10px;
+      border-radius:7px;
+      background:transparent;
+      border:none;
+      color:#e5e7eb;
+      font-size:12px;
+      text-align:left;
+      cursor:pointer;
+    }
+    .user-menu button:hover {
+      background:rgba(55,65,81,0.9);
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="title"><span class="logo"></span> <span>Octopus Ops 控制台</span></div>
+    <div class="meta">
+      <span id="js-status" class="pill" style="margin-right:8px; background:rgba(255,255,255,0.06); border:1px solid #111827; color:#9ca3af;">JS: loading</span>
+      <div class="user-dropdown">
+        <span id="header-user" class="user-name">未登录</span>
+        <div class="user-menu">
+          <button id="user-menu-manage">主机 &amp; 用户管理</button>
+          <button id="user-menu-logout">退出登录</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-section-title">概览</div>
+      <button class="menu-btn active" data-page="page-overview">
+        <span class="icon"></span>
+        <span class="label">总览</span>
+      </button>
+      <div class="sidebar-section-title">资产</div>
+      <button class="menu-btn" data-page="page-hosts">
+        <span class="icon"></span>
+        <span class="label">主机管理</span>
+      </button>
+      <button class="menu-btn" data-page="page-resources">
+        <span class="label">资源管理</span>
+      </button>
+      <div class="sidebar-section-title">监控</div>
+      <button class="menu-btn" data-page="page-monitor">
+        <span class="label">主机监控</span>
+      </button>
+      <button class="menu-btn" data-page="page-alerts">
+        <span class="label">告警</span>
+      </button>
+      <div class="sidebar-section-title">运维</div>
+      <button class="menu-btn" data-page="page-user-mgmt">
+        <span class="label">用户管理</span>
+      </button>
+      <button class="menu-btn" data-page="page-db">
+        <span class="label">数据库管理</span>
+      </button>
+    </aside>
+
+    <main class="content">
+    <section id="page-resources" class="tab-page">
+      <div class="card">
+        <h2>资源管理 <span class="sub">查看并管理远程主机的进程与端口</span></h2>
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>选择主机</label>
+            <select id="res-host" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="">（请先加载主机）</option>
+            </select>
+          </div>
+          <div style="flex:0 0 220px;">
+            <label>排序方式</label>
+            <select id="res-proc-sort" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="mem" selected>内存使用率</option>
+              <option value="cpu">CPU 使用率</option>
+              <option value="time">运行时间</option>
+              <option value="pid">PID 大小</option>
+            </select>
+          </div>
+          <div style="flex:0 0 160px;">
+            <label>&nbsp;</label>
+            <label style="display:flex; align-items:center; gap:8px; color:#9ca3af; font-size:12px;">
+              <input id="res-proc-asc" type="checkbox" style="width:auto;" />
+              正序（默认从大到小）
+            </label>
+          </div>
+          <div style="align-self:flex-end; display:flex; gap:8px;">
+            <button id="btn-res-proc">刷新进程</button>
+            <button class="secondary" id="btn-res-ports">刷新端口</button>
+          </div>
+          <div class="status" id="res-status" style="align-self:flex-end;"></div>
+        </div>
+        <div class="row" style="margin-bottom:8px;">
+          <div style="flex:1 1 50%;">
+            <h3 style="margin:0 0 6px; font-size:14px;">进程列表（Top 80）</h3>
+            <div class="status" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span>排序：<b id="res-proc-sort-label">内存使用率</b>，<b id="res-proc-sort-order">从大到小</b></span>
+              <span class="status">提示：端口刷新不会影响此排序栏</span>
+            </div>
+            <div id="res-proc-table"></div>
+          </div>
+          <div style="flex:1 1 50%;">
+            <h3 style="margin:0 0 6px; font-size:14px;">端口列表（监听端口）</h3>
+            <div id="res-port-table"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 进程管理弹窗（居中） -->
+    <div id="proc-manage-backdrop" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:999; align-items:center; justify-content:center;">
+      <div id="proc-manage" class="card" style="width:45vw; max-width:900px; max-height:70vh; min-height:260px; display:flex; flex-direction:column; overflow:auto;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <h2 style="margin:0;">进程管理 <span class="sub" id="proc-manage-title">-</span></h2>
+          <button class="secondary" id="btn-proc-close">关闭</button>
+        </div>
+        <div class="row">
+          <div class="stat" style="flex:1 1 220px;">
+            <div class="stat-label">PID</div>
+            <div class="stat-value" id="proc-info-pid">-</div>
+          </div>
+          <div class="stat" style="flex:1 1 220px;">
+            <div class="stat-label">用户</div>
+            <div class="stat-value" id="proc-info-user">-</div>
+          </div>
+          <div class="stat" style="flex:1 1 220px;">
+            <div class="stat-label">CPU / MEM</div>
+            <div class="stat-value" id="proc-info-usage">-</div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div style="flex:1 1 100%;">
+            <div class="status">运行时间：<b id="proc-info-time">-</b></div>
+            <div class="status" style="margin-top:4px;">命令：<b id="proc-info-cmd">-</b></div>
+          </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <div style="display:flex; gap:8px;">
+            <button class="secondary" id="btn-proc-kill">kill</button>
+            <button class="secondary" id="btn-proc-kill9">kill -9</button>
+          </div>
+          <div class="status" id="proc-manage-status" style="align-self:flex-end;"></div>
+        </div>
+      </div>
+    </div>
+
+    <section id="page-overview" class="tab-page active">
+      <div class="card">
+        <h2>系统概览 <span class="sub">快速状态总览</span></h2>
+        <div class="grid-3">
+          <div class="stat">
+            <div class="stat-label">数据库健康</div>
+            <div class="stat-value" id="stat-db-health">-</div>
+            <div class="status" id="stat-db-detail"></div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">最近告警数量</div>
+            <div class="stat-value" id="stat-alert-count">-</div>
+            <div class="status" id="stat-alert-latest"></div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">最近一次监控采集</div>
+            <div class="stat-value" id="stat-last-metric">-</div>
+            <div class="status" id="stat-last-metric-time"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>监控看板 <span class="sub">所有主机（每分钟自动刷新）</span></h2>
+        <div id="host-dashboard" class="grid-3"></div>
+      </div>
+    </section>
+
+    <section id="page-hosts" class="tab-page">
+      <div class="card">
+        <h2>主机管理 <span class="sub">批量纳管 Linux 主机（SSH 密钥）</span></h2>
+        <div class="card" style="margin-top:10px;">
+          <h2>SSH 自检（Windows） <span class="sub">先验证免密登录，再添加到平台</span></h2>
+          <div class="status">
+            需要准备：目标主机 <b>IP</b>、<b>端口</b>、<b>用户名</b>、本机 <b>OpenSSH 私钥文件路径</b>（例如 <code>C:\Users\你\.ssh\id_ed25519</code>）。
+          </div>
+          <div class="status" style="margin-top:6px;">
+            1) 下载脚本：<a href="/static/ssh_check.ps1" target="_blank" style="color:#38bdf8;">ssh_check.ps1</a>
+            <br/>
+            2) PowerShell 运行示例：
+            <br/>
+            <code>powershell -ExecutionPolicy Bypass -File .\ssh_check.ps1 123.207.215.86 ubuntu C:\Users\你\.ssh\octopus_ed25519 22</code>
+            <br/>
+            3) 若脚本输出的公钥能成功登录，再把 <b>私钥全文</b> 粘贴到下方“SSH 私钥”框中添加主机。
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>主机名</label>
+            <input id="host-name" placeholder="例如: web-01" />
+          </div>
+          <div>
+            <label>主机 IP</label>
+            <input id="host-ip" placeholder="例如: 10.0.0.10" />
+          </div>
+          <div>
+            <label>用户</label>
+            <input id="host-user" value="root" />
+          </div>
+          <div>
+            <label>端口</label>
+            <input id="host-port" type="number" value="22" />
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>云厂商（可选）</label>
+            <input id="host-cloud" placeholder="例如: aliyun/aws/tencent" />
+          </div>
+          <div style="flex:2 1 400px;">
+            <label>SSH 私钥（粘贴 PEM，多行）</label>
+            <textarea id="host-key" rows="4" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb; font-family:monospace;" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;...&#10;-----END OPENSSH PRIVATE KEY-----"></textarea>
+          </div>
+          <div style="flex:1 1 260px;">
+            <label>或 私钥文件路径（推荐 Windows）</label>
+            <input id="host-key-path" placeholder="例如: C:\Users\86153\.ssh\octopus_ed25519" />
+          </div>
+          <div style="align-self:flex-end;">
+            <button id="btn-host-add">添加主机</button>
+            <button class="secondary" id="btn-host-save" style="display:none;">保存修改</button>
+            <button class="secondary" id="btn-host-cancel" style="display:none;">取消</button>
+          </div>
+        </div>
+        <div class="status" id="hosts-status"></div>
+        <div class="card" style="margin-top:10px;">
+          <h2>主机看板 <span class="sub">最近一次监控数据（鼠标悬停看详情）</span></h2>
+          <div id="hosts-dashboard" class="grid-3"></div>
+        </div>
+        <div id="hosts-table"></div>
+      </div>
+    </section>
+
+    <section id="page-user-mgmt" class="tab-page">
+      <div class="card">
+        <h2>主机用户管理 <span class="sub">先选择主机，再管理该主机的 Linux 用户</span></h2>
+        <div class="status">
+          前置条件：远端执行 <code>useradd/usermod/userdel</code> 需要 <b>root</b> 或 <b>免密 sudo</b>（平台用 <code>sudo -n</code>，不支持交互输入密码）。
+        </div>
+        <div class="row" style="margin-top:8px; margin-bottom:8px;">
+          <div>
+            <label>选择主机</label>
+            <select id="um-host" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="">（请先加载主机）</option>
+            </select>
+          </div>
+          <div style="align-self:flex-end; display:flex; gap:8px;">
+            <button id="btn-um-refresh">刷新用户列表</button>
+          </div>
+          <div class="status" id="um-status" style="align-self:flex-end;"></div>
+        </div>
+
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>新增用户名</label>
+            <input id="um-new-username" placeholder="例如: devops" />
+          </div>
+          <div>
+            <label>新增用户密码</label>
+            <input id="um-new-password" type="password" placeholder="至少 6 位；允许 A-Za-z0-9@#%+=_- " />
+          </div>
+          <div>
+            <label>确认密码</label>
+            <input id="um-new-password2" type="password" placeholder="再次输入密码" />
+          </div>
+          <div style="flex:0 0 160px;">
+            <label>赋予 sudo</label>
+            <select id="um-new-sudo" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="false">否</option>
+              <option value="true">是</option>
+            </select>
+          </div>
+          <div style="align-self:flex-end; display:flex; gap:8px;">
+            <button class="secondary" id="btn-um-create">新增用户</button>
+          </div>
+        </div>
+
+        <!-- 用户管理弹窗（居中） -->
+        <div id="um-manage-backdrop" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:999; align-items:center; justify-content:center;">
+          <div id="um-manage" class="card" style="width:55vw; max-width:900px; max-height:70vh; min-height:320px; display:flex; flex-direction:column; overflow:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <h2 style="margin:0;">用户管理 <span class="sub" id="um-manage-title">-</span></h2>
+              <button class="secondary" id="btn-um-close">关闭</button>
+            </div>
+            <div class="row" style="margin-top:4px;">
+              <div>
+                <div class="status">主组：<b id="um-primary-group">-</b></div>
+                <div class="status">附加组：<b id="um-supp-groups">-</b></div>
+              </div>
+            </div>
+            <div class="row" style="margin-top:8px;">
+              <div>
+                <label>修改密码（新密码）</label>
+                <input id="um-mgr-pass" type="password" placeholder="至少 6 位；允许 A-Za-z0-9@#%+=_- " />
+              </div>
+              <div>
+                <label>确认新密码</label>
+                <input id="um-mgr-pass2" type="password" placeholder="再次输入" />
+              </div>
+              <div style="align-self:flex-end;">
+                <button class="secondary" id="btn-um-setpass">修改密码</button>
+              </div>
+            </div>
+            <div class="row" style="margin-top:8px;">
+              <div>
+                <label>管理主组（primary group）</label>
+                <input id="um-mgr-primary" placeholder="例如：devops" />
+              </div>
+              <div style="align-self:flex-end; display:flex; gap:8px;">
+                <button class="secondary" id="btn-um-setprimary">设置主组</button>
+              </div>
+            </div>
+            <div class="row" style="margin-top:8px;">
+              <div>
+                <label>管理附加组（supplementary groups）</label>
+                <input id="um-mgr-group" placeholder="例如：sudo 或 docker" />
+              </div>
+              <div style="align-self:flex-end; display:flex; gap:8px;">
+                <button class="secondary" id="btn-um-addgroup">添加附加组</button>
+                <button class="secondary" id="btn-um-rmgroup">移除附加组</button>
+                <button class="secondary" id="btn-um-toggle-sudo">切换 sudo</button>
+              </div>
+            </div>
+            <div class="status" id="um-manage-status" style="margin-top:8px;"></div>
+          </div>
+        </div>
+
+        <div id="um-table"></div>
+      </div>
+    </section>
+
+    <section id="page-monitor" class="tab-page">
+      <div class="card">
+      <h2>主机监控 <span class="sub">选择主机 → 资源大屏 + 历史曲线</span></h2>
+      <div class="row" style="margin-bottom:8px;">
+        <div style="flex:0 0 260px;">
+          <label>选择主机</label>
+          <select id="mon-host" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+            <option value="local">local</option>
+          </select>
+        </div>
+        <div style="flex:0 0 180px;">
+          <label>显示点数</label>
+          <select id="mon-limit" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+            <option value="20">20</option>
+            <option value="60" selected>60</option>
+            <option value="120">120</option>
+          </select>
+        </div>
+        <div style="align-self:flex-end; display:flex; gap:8px;">
+          <button id="btn-mon-refresh">刷新</button>
+          <button class="secondary" id="btn-collect">采集一次（local）</button>
+        </div>
+        <div class="status" id="metrics-status" style="align-self:flex-end;"></div>
+      </div>
+
+      <div class="grid-3" style="margin-top:6px;">
+        <div class="stat">
+          <div class="stat-label">CPU 使用率</div>
+          <div class="stat-value" id="mon-stat-cpu">-</div>
+          <div class="status" id="mon-stat-time">-</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">内存使用率</div>
+          <div class="stat-value" id="mon-stat-mem">-</div>
+          <div class="status" id="mon-stat-host">-</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">磁盘使用率</div>
+          <div class="stat-value" id="mon-stat-disk">-</div>
+          <div class="status" id="mon-stat-points">-</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:10px;">
+        <h2>历史曲线 <span class="sub">CPU / MEM / DISK（0-100%）</span></h2>
+        <canvas id="mon-chart" height="220"></canvas>
+        <div class="status" id="mon-chart-hint" style="margin-top:6px;">鼠标悬停可查看时间点数值</div>
+      </div>
+
+      <div class="card" style="margin-top:10px;">
+        <h2>告警邮件（SMTP） <span class="sub">先配置 SMTP，再给触发器填写收件人</span></h2>
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>SMTP Host</label>
+            <input id="smtp-host" placeholder="例如：smtp.qq.com" />
+          </div>
+          <div style="flex:0 0 140px;">
+            <label>Port</label>
+            <input id="smtp-port" type="number" value="587" />
+          </div>
+          <div style="flex:0 0 160px;">
+            <label>TLS</label>
+            <select id="smtp-tls" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="true" selected>启用</option>
+              <option value="false">禁用</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>SMTP Username（可选）</label>
+            <input id="smtp-user" placeholder="例如：your@qq.com" />
+          </div>
+          <div>
+            <label>SMTP Password（可选/授权码）</label>
+            <input id="smtp-pass" type="password" placeholder="邮箱授权码或密码" />
+          </div>
+          <div>
+            <label>From</label>
+            <input id="smtp-from" placeholder="例如：Octopus <your@qq.com> 或 your@qq.com" />
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:8px;">
+          <div style="flex:1 1 420px;">
+            <label>测试收件人（逗号分隔）</label>
+            <input id="smtp-test-to" placeholder="例如：a@xx.com,b@yy.com" />
+          </div>
+          <div style="align-self:flex-end; display:flex; gap:8px;">
+            <button class="secondary" id="btn-smtp-load">加载配置</button>
+            <button id="btn-smtp-save">保存配置</button>
+            <button class="secondary" id="btn-smtp-test">发送测试邮件</button>
+          </div>
+          <div class="status" id="smtp-status" style="align-self:flex-end;"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:10px;">
+        <h2>历史登录记录 <span class="sub">用于排查异常 IP 登录（Linux: last -i）</span></h2>
+        <div class="row" style="margin-bottom:8px;">
+          <div style="flex:0 0 180px;">
+            <label>条数</label>
+            <select id="login-limit" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="20">20</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <div style="align-self:flex-end; display:flex; gap:8px;">
+            <button class="secondary" id="btn-login-refresh">刷新登录记录</button>
+          </div>
+          <div class="status" id="loginrec-status" style="align-self:flex-end;"></div>
+        </div>
+        <div id="loginrec-table"></div>
+      </div>
+
+      <div class="card" style="margin-top:10px;">
+        <h2>日志采集 <span class="sub">登记目录 → 文件列表 → 双击打开 → 关键字匹配</span></h2>
+        <div class="row" style="margin-bottom:8px;">
+          <div style="flex:0 0 260px;">
+            <label>选择主机（日志源）</label>
+            <select id="log-host" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="">（请先加载主机）</option>
+            </select>
+          </div>
+          <div>
+            <label>日志目录（Linux）</label>
+            <input id="log-dir" placeholder="例如：/var/log 或 /var/log/nginx" />
+          </div>
+          <div>
+            <label>备注（可选）</label>
+            <input id="log-remark" placeholder="例如：nginx日志" />
+          </div>
+          <div style="align-self:flex-end; display:flex; gap:8px;">
+            <button class="secondary" id="btn-log-add">添加日志源</button>
+            <button class="secondary" id="btn-log-refresh">刷新日志源</button>
+          </div>
+          <div class="status" id="log-status" style="align-self:flex-end;"></div>
+        </div>
+        <div class="row" style="margin-bottom:8px;">
+          <div style="flex:0 0 320px;">
+            <label>日志源</label>
+            <select id="log-source" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="">（请先加载）</option>
+            </select>
+          </div>
+          <div style="align-self:flex-end; display:flex; gap:8px;">
+            <button class="secondary" id="btn-log-files">列出文件</button>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:8px;">
+          <div style="flex:0 0 320px;">
+            <label>日志文件（双击打开）</label>
+            <div id="log-files" style="border:1px solid #111827; border-radius:8px; background:#020617; max-height:260px; overflow:auto; padding:6px;"></div>
+          </div>
+          <div style="flex:1 1 auto;">
+            <div class="row" style="margin-bottom:8px;">
+              <div style="flex:1 1 auto;">
+                <label>关键字匹配（前端过滤/高亮）</label>
+                <input id="log-keyword" placeholder="例如：ERROR 或 traceId=xxx" />
+              </div>
+              <div style="flex:0 0 160px; align-self:flex-end;">
+                <button class="secondary" id="btn-log-apply">应用匹配</button>
+              </div>
+              <div style="flex:0 0 160px; align-self:flex-end;">
+                <button class="secondary" id="btn-log-clear">清除匹配</button>
+              </div>
+            </div>
+            <div class="status" id="log-opened"></div>
+            <div id="log-content" style="border:1px solid #111827; border-radius:8px; background:#020617; max-height:420px; overflow:auto; padding:10px; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size:12px; white-space:pre-wrap;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:10px;">
+        <h2>AI 助理 <span class="sub">预留接口（后续接入你的 agent）</span></h2>
+        <div class="row" style="margin-bottom:8px;">
+          <div style="flex:1 1 auto;">
+            <label>问题</label>
+            <input id="ai-prompt" placeholder="例如：分析最近 1 小时 CPU 升高原因，并给排查步骤" />
+          </div>
+          <div style="align-self:flex-end; display:flex; gap:8px;">
+            <button class="secondary" id="btn-ai-send">发送</button>
+          </div>
+          <div class="status" id="ai-status" style="align-self:flex-end;"></div>
+        </div>
+        <pre id="ai-reply">// AI 助理占位：后续接入 agent 后这里会显示答复</pre>
+      </div>
+      </div>
+    </section>
+
+    <section id="page-alerts" class="tab-page">
+      <div class="card">
+        <h2>告警事件 <span class="sub">未完成告警（可一键完成）</span></h2>
+        <div class="row" style="margin-bottom:8px;">
+          <div style="display:flex; gap:8px;">
+            <button id="btn-refresh-alerts">刷新告警</button>
+            <button class="secondary" id="btn-refresh-alerts-history">历史告警</button>
+          </div>
+          <div class="status" id="alerts-status"></div>
+        </div>
+        <div id="alerts-table"></div>
+      </div>
+
+      <div class="card" id="alerts-history-card" style="display:none;">
+        <h2>历史告警 <span class="sub">已完成告警</span></h2>
+        <div class="status" id="alerts-history-status"></div>
+        <div id="alerts-history-table"></div>
+      </div>
+
+      <div class="card">
+        <h2>告警触发器 <span class="sub">基于 CPU / 内存 / 磁盘</span></h2>
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>主机</label>
+            <select id="trg-host" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="local">local</option>
+            </select>
+          </div>
+          <div>
+            <label>指标</label>
+            <select id="trg-metric" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="cpu">CPU 使用率</option>
+              <option value="mem">内存使用率</option>
+              <option value="disk">磁盘使用率</option>
+            </select>
+          </div>
+          <div>
+            <label>条件</label>
+            <select id="trg-op" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value=">=">>=</option>
+              <option value=">">></option>
+              <option value="<="><=</option>
+              <option value="<"><</option>
+            </select>
+          </div>
+          <div>
+            <label>阈值 (%)</label>
+            <input id="trg-value" type="number" min="0" max="100" step="1" value="80" />
+          </div>
+          <div>
+            <label>级别</label>
+            <select id="trg-level" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="low">一般（绿色）</option>
+              <option value="medium">中度（黄色）</option>
+              <option value="high">严重（红色）</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>描述（可选）</label>
+            <input id="trg-desc" placeholder="例如：CPU 高于 80% 触发中度告警" />
+          </div>
+          <div>
+            <label>告警邮件收件人（逗号分隔）</label>
+            <input id="trg-email" placeholder="例如：a@xx.com,b@yy.com" />
+          </div>
+          <div style="align-self:flex-end; display:flex; gap:8px;">
+            <button id="btn-trg-create">添加触发器</button>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>选择要删除的触发器</label>
+            <select id="trg-delete-id" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="">（先加载触发器列表）</option>
+            </select>
+          </div>
+          <div style="align-self:flex-end; display:flex; gap:8px;">
+            <button class="secondary" id="btn-trg-delete">删除触发器</button>
+          </div>
+        </div>
+
+        <div class="row" style="margin-bottom:8px;">
+          <div>
+            <label>测试指标</label>
+            <select id="trg-test-metric" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="cpu">CPU 使用率</option>
+              <option value="mem">内存使用率</option>
+              <option value="disk">磁盘使用率</option>
+            </select>
+          </div>
+          <div>
+            <label>测试主机</label>
+            <select id="trg-test-host" style="width:100%; padding:6px 8px; border-radius:6px; border:1px solid #1f2937; background:#020617; color:#e5e7eb;">
+              <option value="local">local</option>
+            </select>
+          </div>
+          <div>
+            <label>测试值 (%)</label>
+            <input id="trg-test-value" type="number" min="0" max="100" step="1" value="85" />
+          </div>
+          <div style="align-self:flex-end; display:flex; gap:8px;">
+            <button class="secondary" id="btn-trg-test">测试触发器</button>
+          </div>
+        </div>
+
+        <div class="status" id="trg-status"></div>
+        <div id="trg-table"></div>
+      </div>
+    </section>
+
+    <section id="page-db" class="tab-page">
+      <div class="card">
+      <h2>数据库管理（SQLite） <span class="sub">健康、备份与回滚</span></h2>
+      <div class="row" style="margin-bottom:8px;">
+        <div>
+          <button id="btn-db-health">健康检查</button>
+        </div>
+        <div class="status" id="db-health-status"></div>
+      </div>
+
+      <div class="row" style="margin-bottom:8px;">
+        <div>
+          <label>备份名称（可留空自动生成）</label>
+          <input id="db-backup-name" placeholder="例如: pre-change-20250316" />
+        </div>
+        <div style="align-self:flex-end;">
+          <button id="btn-db-backup">创建备份</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:8px;">
+        <div>
+          <label>备份文件名（从下方列表拷贝）</label>
+          <input id="db-restore-name" placeholder="backup-20250316-120000.db" />
+        </div>
+        <div style="align-self:flex-end; display:flex; gap:8px;">
+          <button id="btn-db-restore">从指定备份恢复</button>
+          <button id="btn-db-rollback">回滚到最近备份</button>
+        </div>
+      </div>
+
+      <div class="row" style="margin-bottom:8px;">
+        <div class="status" id="db-backup-status"></div>
+      </div>
+
+      <pre id="db-backups-output">// 备份列表将在这里显示</pre>
+      </div>
+    </section>
+  </main>
+  </div>
+
+  <script>
+    // 前端自检：若出现语法/运行时错误，直接显示在右上角，方便定位“按钮点不动”
+    try {
+      window.addEventListener("error", (ev) => {
+        const el = document.getElementById("js-status");
+        if (!el) return;
+        const msg = (ev && ev.message) ? String(ev.message) : "unknown error";
+        el.textContent = "JS错误: " + msg.slice(0, 80);
+        el.style.color = "#fee2e2";
+        el.style.borderColor = "#ef4444";
+      });
+    } catch {}
+
+    const state = {
+      accessToken: null,
+      refreshToken: null,
+      baseUrl: window.location.origin, // 如 http://127.0.0.1:8001
+      chartData: [],
+      editingHostId: null,
+      umSelectedUser: null,
+      umSelectedGroups: null,
+      resProcessesRaw: [],
+      resSelectedProc: null,
+      resProcPage: 1,
+      umUsersRaw: [],
+      umPage: 1,
+      alertsRaw: [],
+      alertsPage: 1,
+    };
+
+    const TOKEN_STORAGE_KEY = "octopus_tokens_v1";
+
+    function saveTokens(accessToken, refreshToken) {
+      state.accessToken = accessToken;
+      state.refreshToken = refreshToken;
+      localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({ accessToken, refreshToken, ts: Date.now() }));
+    }
+
+    function clearTokens() {
+      state.accessToken = null;
+      state.refreshToken = null;
+      localStorage.removeItem(TOKEN_STORAGE_KEY);
+    }
+
+    function loadTokens() {
+      try {
+        const raw = localStorage.getItem(TOKEN_STORAGE_KEY);
+        if (!raw) return;
+        const obj = JSON.parse(raw);
+        if (obj && obj.accessToken) state.accessToken = obj.accessToken;
+        if (obj && obj.refreshToken) state.refreshToken = obj.refreshToken;
+      } catch {
+        // ignore
+      }
+    }
+
+    function setText(id, text) {
+      document.getElementById(id).textContent = text;
+    }
+
+    function on(id, evt, fn) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener(evt, fn);
+    }
+
+    function prettyJson(obj) {
+      try { return JSON.stringify(obj, null, 2); } catch { return String(obj); }
+    }
+
+    async function api(path, options = {}) {
+      const url = state.baseUrl + path;
+      const headers = options.headers || {};
+      headers["Content-Type"] = options.body ? "application/json" : headers["Content-Type"] || "application/json";
+      if (state.accessToken) {
+        headers["Authorization"] = "Bearer " + state.accessToken;
+      }
+      const resp = await fetch(url, { ...options, headers });
+      const raw = await resp.text();
+      let data = raw;
+      try { data = raw ? JSON.parse(raw) : null; } catch { /* keep raw text */ }
+      if (!resp.ok && resp.status === 401 && state.refreshToken && !options.__retried) {
+        // 尝试刷新 access token 后重试一次
+        try {
+          const refreshed = await fetch(state.baseUrl + "/api/auth/refresh", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refresh_token: state.refreshToken }),
+          });
+          const rraw = await refreshed.text();
+          let rdata = rraw;
+          try { rdata = rraw ? JSON.parse(rraw) : null; } catch {}
+          if (refreshed.ok && rdata && rdata.access_token && rdata.refresh_token) {
+            saveTokens(rdata.access_token, rdata.refresh_token);
+            return await api(path, { ...options, __retried: true });
+          }
+        } catch {
+          // ignore
+        }
+        clearTokens();
+      }
+      if (!resp.ok) {
+        const detail = data && data.detail ? data.detail : resp.statusText;
+        throw new Error("HTTP " + resp.status + ": " + detail);
+      }
+      return data;
+    }
+
+    const USERNAME_STORAGE_KEY = "octopus_username_v1";
+
+    function saveUsername(u) {
+      try {
+        localStorage.setItem(USERNAME_STORAGE_KEY, u);
+      } catch {}
+    }
+
+    function loadUsername() {
+      try {
+        return localStorage.getItem(USERNAME_STORAGE_KEY) || "";
+      } catch {
+        return "";
+      }
+    }
+
+    function renderResProcesses(list) {
+      const el = document.getElementById("res-proc-table");
+      if (!el) return;
+      if (!list || !list.length) {
+        el.innerHTML = '<div class="status">暂无进程数据</div>';
+        return;
+      }
+      function etimeToSeconds(s) {
+        // 支持 ps etime: [[dd-]hh:]mm:ss
+        if (!s) return 0;
+        const t = String(s).trim();
+        let days = 0;
+        let rest = t;
+        if (t.includes("-")) {
+          const arr = t.split("-", 2);
+          days = parseInt(arr[0], 10) || 0;
+          rest = arr[1];
+        }
+        const parts = rest.split(":").map((x) => parseInt(x, 10) || 0);
+        let sec = 0;
+        if (parts.length === 3) sec = parts[0] * 3600 + parts[1] * 60 + parts[2];
+        else if (parts.length === 2) sec = parts[0] * 60 + parts[1];
+        else if (parts.length === 1) sec = parts[0];
+        return days * 86400 + sec;
+      }
+      function getSortKey(p, sortBy) {
+        if (sortBy === "cpu") return Number(p.cpu) || 0;
+        if (sortBy === "pid") return Number(p.pid) || 0;
+        if (sortBy === "time") return etimeToSeconds(p.time);
+        return Number(p.mem) || 0; // default mem
+      }
+      const sortBy = (document.getElementById("res-proc-sort")?.value) || "mem";
+      const asc = !!document.getElementById("res-proc-asc")?.checked;
+      const sortLabelMap = { mem: "内存使用率", cpu: "CPU 使用率", time: "运行时间", pid: "PID 大小" };
+      const lbl = sortLabelMap[sortBy] || "内存使用率";
+      const order = asc ? "从小到大" : "从大到小";
+      const lblEl = document.getElementById("res-proc-sort-label");
+      const orderEl = document.getElementById("res-proc-sort-order");
+      if (lblEl) lblEl.textContent = lbl;
+      if (orderEl) orderEl.textContent = order;
+      const sorted = [...list].sort((a, b) => {
+        const ka = getSortKey(a, sortBy);
+        const kb = getSortKey(b, sortBy);
+        return asc ? (ka - kb) : (kb - ka);
+      });
+
+      const pageSize = 10;
+      const total = sorted.length;
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      state.resProcPage = Math.min(Math.max(1, state.resProcPage || 1), totalPages);
+      const start = (state.resProcPage - 1) * pageSize;
+      const pageRows = sorted.slice(start, start + pageSize);
+      const header =
+        '<div style="display:grid;grid-template-columns:80px 100px 60px 60px 90px 1fr;gap:8px;align-items:center;padding:6px 8px;'
+        + 'border:1px solid #111827;border-radius:8px;background:#0b1224;margin-bottom:6px;font-size:12px;color:#9ca3af;">'
+        + '<div>PID</div><div>用户</div><div>CPU%</div><div>MEM%</div><div>运行时间</div><div>命令 / 操作</div></div>';
+      const rows = pageRows.map((p) => {
+        const ops = '<button class="secondary" data-res-proc-manage="' + p.pid + '">管理</button>';
+        return (
+          '<div style="display:grid;grid-template-columns:80px 100px 60px 60px 90px 1fr;gap:8px;align-items:center;padding:6px 8px;'
+          + 'border:1px solid #111827;border-radius:8px;background:#020617;margin-bottom:4px;font-size:12px;">'
+          + '<div class="status">' + p.pid + '</div>'
+          + '<div class="status">' + p.user + '</div>'
+          + '<div class="status">' + p.cpu.toFixed(1) + '</div>'
+          + '<div class="status">' + p.mem.toFixed(1) + '</div>'
+          + '<div class="status">' + p.time + '</div>'
+          + '<div class="status" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + String(p.cmd).replaceAll('"','&quot;') + '">'
+          + String(p.cmd)
+          + ' &nbsp; ' + ops + '</div>'
+          + '</div>'
+        );
+      }).join("");
+      const pager =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">'
+        + '<div class="status">第 ' + state.resProcPage + ' / ' + totalPages + ' 页（共 ' + total + ' 条）</div>'
+        + '<div style="display:flex;gap:8px;">'
+        + '<button class="secondary" id="res-proc-prev"' + (state.resProcPage <= 1 ? " disabled" : "") + '>上一页</button>'
+        + '<button class="secondary" id="res-proc-next"' + (state.resProcPage >= totalPages ? " disabled" : "") + '>下一页</button>'
+        + '</div></div>';
+      el.innerHTML = header + rows + pager;
+
+      const prevBtn = document.getElementById("res-proc-prev");
+      const nextBtn = document.getElementById("res-proc-next");
+      if (prevBtn) prevBtn.addEventListener("click", () => { state.resProcPage = Math.max(1, state.resProcPage - 1); renderResProcesses(state.resProcessesRaw || []); });
+      if (nextBtn) nextBtn.addEventListener("click", () => { state.resProcPage = Math.min(totalPages, state.resProcPage + 1); renderResProcesses(state.resProcessesRaw || []); });
+
+      const hostId = document.getElementById("res-host").value;
+      el.querySelectorAll("button[data-res-proc-manage]").forEach((b) => {
+        b.addEventListener("click", async () => {
+          const pid = Number(b.getAttribute("data-res-proc-manage") || "0");
+          const proc = (state.resProcessesRaw || []).find((x) => Number(x.pid) === pid);
+          if (proc) openProcManage(proc);
+        });
+      });
+    }
+
+    function openProcManage(proc) {
+      state.resSelectedProc = proc;
+      document.getElementById("proc-manage-title").textContent = proc.user + " / PID " + proc.pid;
+      document.getElementById("proc-info-pid").textContent = String(proc.pid);
+      document.getElementById("proc-info-user").textContent = String(proc.user);
+      document.getElementById("proc-info-usage").textContent = proc.cpu.toFixed(1) + "% / " + proc.mem.toFixed(1) + "%";
+      document.getElementById("proc-info-time").textContent = String(proc.time || "-");
+      document.getElementById("proc-info-cmd").textContent = String(proc.cmd || "-");
+      setText("proc-manage-status", "");
+      document.getElementById("proc-manage-backdrop").style.display = "flex";
+    }
+
+    function closeProcManage() {
+      state.resSelectedProc = null;
+      document.getElementById("proc-manage-backdrop").style.display = "none";
+      setText("proc-manage-status", "");
+    }
+
+    async function procKill(force) {
+      const hostId = document.getElementById("res-host").value;
+      const proc = state.resSelectedProc;
+      if (!hostId || !proc) return;
+      const action = force ? "kill -9" : "kill";
+      if (!confirm("确认对 PID " + proc.pid + " 执行 " + action + " 吗？")) return;
+      setText("proc-manage-status", "执行 " + action + " 中...");
+      try {
+        await api("/api/resources/processes/kill?host_id=" + encodeURIComponent(hostId) + "&pid=" + encodeURIComponent(proc.pid) + "&force=" + (force ? "true" : "false"), {
+          method: "POST",
+        });
+        setText("proc-manage-status", "已执行 " + action);
+        await refreshResProcesses(false);
+        closeProcManage();
+      } catch (e) {
+        setText("proc-manage-status", "执行失败：" + e.message);
+      }
+    }
+
+    function renderResPorts(list) {
+      const el = document.getElementById("res-port-table");
+      if (!el) return;
+      if (!list || !list.length) {
+        el.innerHTML = '<div class="status">暂无端口数据</div>';
+        return;
+      }
+      const header =
+        '<div style="display:grid;grid-template-columns:70px 70px 70px 180px 180px 90px 1fr;gap:8px;align-items:center;padding:6px 8px;'
+        + 'border:1px solid #111827;border-radius:8px;background:#0b1224;margin-bottom:6px;font-size:12px;color:#9ca3af;">'
+        + '<div>协议</div><div>接收队列</div><div>发送队列</div><div>本地地址</div><div>远端地址</div><div>状态</div><div>PID/程序</div></div>';
+      const rows = list.map((p) => {
+        return (
+          '<div style="display:grid;grid-template-columns:70px 70px 70px 180px 180px 90px 1fr;gap:8px;align-items:center;padding:6px 8px;'
+          + 'border:1px solid #111827;border-radius:8px;background:#020617;margin-bottom:4px;font-size:12px;">'
+          + '<div class="status">' + (p.proto || "-") + '</div>'
+          + '<div class="status">' + (p.recv_q || "-") + '</div>'
+          + '<div class="status">' + (p.send_q || "-") + '</div>'
+          + '<div class="status" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + String(p.local).replaceAll('"','&quot;') + '">' + (p.local || "-") + '</div>'
+          + '<div class="status" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + String(p.foreign).replaceAll('"','&quot;') + '">' + (p.foreign || "-") + '</div>'
+          + '<div class="status">' + (p.state || "-") + '</div>'
+          + '<div class="status" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + String(p.pid_program || "").replaceAll('"','&quot;') + '">' + (p.pid_program || "-") + '</div>'
+          + '</div>'
+        );
+      }).join("");
+      el.innerHTML = header + rows;
+    }
+
+    async function refreshResProcesses(showLoading = true) {
+      const hostId = document.getElementById("res-host").value;
+      if (!hostId) {
+        setText("res-status", "请先选择主机");
+        return;
+      }
+      if (showLoading) setText("res-status", "加载进程中...");
+      try {
+        const list = await api("/api/resources/processes?host_id=" + encodeURIComponent(hostId));
+        state.resProcessesRaw = list || [];
+        state.resProcPage = 1;
+        renderResProcesses(list);
+        setText("res-status", "已加载进程 " + list.length + " 条");
+      } catch (e) {
+        setText("res-status", "加载失败：" + e.message);
+      }
+    }
+
+    async function refreshResPorts() {
+      const hostId = document.getElementById("res-host").value;
+      if (!hostId) {
+        setText("res-status", "请先选择主机");
+        return;
+      }
+      setText("res-status", "加载端口中...");
+      try {
+        const list = await api("/api/resources/ports?host_id=" + encodeURIComponent(hostId));
+        renderResPorts(list);
+        setText("res-status", "已加载端口 " + list.length + " 条");
+      } catch (e) {
+        setText("res-status", "加载失败：" + e.message);
+      }
+    }
+
+    async function collectOnce() {
+      setText("metrics-status", "采集中...");
+      try {
+        const data = await api("/api/monitoring/collect", { method: "POST" });
+        setText("metrics-status", "采集成功");
+        // local 采集后刷新监控页/告警/概览
+        await Promise.all([refreshMonitorScreen(), refreshAlerts(), refreshOverview()]);
+      } catch (e) {
+        setText("metrics-status", "采集失败：" + e.message);
+      }
+    }
+
+    function drawMonitorChart(points) {
+      const canvas = document.getElementById("mon-chart");
+      if (!canvas || !canvas.getContext) return;
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, w, h);
+
+      const data = points || [];
+      if (!data.length) {
+        ctx.fillStyle = "#6b7280";
+        ctx.font = "12px system-ui";
+        ctx.fillText("暂无监控数据", 10, h / 2);
+        return;
+      }
+      const maxY = 100;
+      const left = 30, right = 10, top = 10, bottom = 22;
+      const plotW = w - left - right;
+      const plotH = h - top - bottom;
+      const stepX = data.length > 1 ? plotW / (data.length - 1) : 0;
+
+      function y(v) {
+        const ratio = Math.max(0, Math.min(1, (Number(v) || 0) / maxY));
+        return top + plotH - ratio * plotH;
+      }
+
+      // axes
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(left, top);
+      ctx.lineTo(left, top + plotH);
+      ctx.lineTo(left + plotW, top + plotH);
+      ctx.stroke();
+
+      const series = [
+        { key: "cpu_percent", color: "#22c55e", name: "CPU" },
+        { key: "mem_percent", color: "#38bdf8", name: "MEM" },
+        { key: "disk_percent", color: "#f97316", name: "DISK" },
+      ];
+
+      // grid lines
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      for (let v = 0; v <= 100; v += 25) {
+        const yy = y(v);
+        ctx.beginPath();
+        ctx.moveTo(left, yy);
+        ctx.lineTo(left + plotW, yy);
+        ctx.stroke();
+        ctx.fillStyle = "#6b7280";
+        ctx.font = "10px system-ui";
+        ctx.fillText(String(v), 4, yy + 3);
+      }
+
+      series.forEach((s) => {
+        ctx.beginPath();
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2;
+        data.forEach((row, idx) => {
+          const x = left + stepX * idx;
+          const v = row[s.key];
+          const yy = y(v);
+          if (idx === 0) ctx.moveTo(x, yy);
+          else ctx.lineTo(x, yy);
+        });
+        ctx.stroke();
+      });
+
+      // hover
+      const hintEl = document.getElementById("mon-chart-hint");
+      function onMove(ev) {
+        const rect = canvas.getBoundingClientRect();
+        const mx = ev.clientX - rect.left;
+        const idx = stepX ? Math.round((mx - left) / stepX) : 0;
+        const i = Math.max(0, Math.min(data.length - 1, idx));
+        const row = data[i];
+        const t = row.created_at ? new Date(row.created_at).toLocaleString() : "";
+        const msg = t
+          + " | CPU " + (row.cpu_percent || 0).toFixed(1) + "%"
+          + " MEM " + (row.mem_percent || 0).toFixed(1) + "%"
+          + " DISK " + (row.disk_percent || 0).toFixed(1) + "%";
+        if (hintEl) hintEl.textContent = msg;
+      }
+      canvas.onmousemove = onMove;
+    }
+
+    async function refreshMonitorScreen() {
+      const host = document.getElementById("mon-host")?.value || "local";
+      const limit = parseInt(document.getElementById("mon-limit")?.value || "60", 10);
+      setText("metrics-status", "加载中...");
+      try {
+        const rows = await api("/api/monitoring/metrics?host=" + encodeURIComponent(host) + "&limit=" + encodeURIComponent(String(limit)));
+        const data = (rows || []).slice().reverse(); // 时间正序绘图
+        setText("metrics-status", "已加载 " + (rows ? rows.length : 0) + " 条");
+        if (rows && rows.length) {
+          const latest = rows[0];
+          document.getElementById("mon-stat-cpu").textContent = (latest.cpu_percent || 0).toFixed(1) + "%";
+          document.getElementById("mon-stat-mem").textContent = (latest.mem_percent || 0).toFixed(1) + "%";
+          document.getElementById("mon-stat-disk").textContent = (latest.disk_percent || 0).toFixed(1) + "%";
+          document.getElementById("mon-stat-time").textContent = new Date(latest.created_at).toLocaleString();
+          document.getElementById("mon-stat-host").textContent = "主机：" + host;
+          document.getElementById("mon-stat-points").textContent = "点数：" + rows.length;
+          // 概览卡片同步
+          setText("stat-last-metric", "CPU " + (latest.cpu_percent || 0).toFixed(1) + "%");
+          setText("stat-last-metric-time", new Date(latest.created_at).toLocaleString());
+        } else {
+          document.getElementById("mon-stat-cpu").textContent = "-";
+          document.getElementById("mon-stat-mem").textContent = "-";
+          document.getElementById("mon-stat-disk").textContent = "-";
+          document.getElementById("mon-stat-time").textContent = "-";
+          document.getElementById("mon-stat-host").textContent = "主机：" + host;
+          document.getElementById("mon-stat-points").textContent = "点数：0";
+        }
+        drawMonitorChart(data);
+      } catch (e) {
+        setText("metrics-status", "加载失败：" + e.message);
+      }
+    }
+
+    async function loadSmtpSetting() {
+      setText("smtp-status", "加载中...");
+      try {
+        const s = await api("/api/notifications/smtp");
+        document.getElementById("smtp-host").value = s.smtp_host || "";
+        document.getElementById("smtp-port").value = String(s.smtp_port || 587);
+        document.getElementById("smtp-user").value = s.smtp_username || "";
+        document.getElementById("smtp-from").value = s.smtp_from || "";
+        document.getElementById("smtp-tls").value = String(!!s.use_tls);
+        setText("smtp-status", "已加载");
+      } catch (e) {
+        setText("smtp-status", "加载失败：" + e.message);
+      }
+    }
+
+    async function saveSmtpSetting() {
+      setText("smtp-status", "保存中...");
+      try {
+        const body = {
+          smtp_host: document.getElementById("smtp-host").value.trim(),
+          smtp_port: parseInt(document.getElementById("smtp-port").value || "587", 10),
+          smtp_username: document.getElementById("smtp-user").value.trim() || null,
+          smtp_password: document.getElementById("smtp-pass").value || null,
+          smtp_from: document.getElementById("smtp-from").value.trim(),
+          use_tls: document.getElementById("smtp-tls").value === "true",
+        };
+        await api("/api/notifications/smtp", { method: "PUT", body: JSON.stringify(body) });
+        document.getElementById("smtp-pass").value = ""; // 不回显密码
+        setText("smtp-status", "保存成功");
+      } catch (e) {
+        setText("smtp-status", "保存失败：" + e.message);
+      }
+    }
+
+    async function testSmtpSetting() {
+      const to = document.getElementById("smtp-test-to").value.trim();
+      if (!to) return setText("smtp-status", "请填写测试收件人");
+      setText("smtp-status", "发送中...");
+      try {
+        await api("/api/notifications/smtp/test?to=" + encodeURIComponent(to), { method: "POST" });
+        setText("smtp-status", "测试邮件已发送（请查收）");
+      } catch (e) {
+        setText("smtp-status", "发送失败：" + e.message);
+      }
+    }
+
+    function renderLoginRecords(rows) {
+      const el = document.getElementById("loginrec-table");
+      if (!el) return;
+      if (!rows || !rows.length) {
+        el.innerHTML = '<div class="status">暂无登录记录</div>';
+        return;
+      }
+      const header =
+        '<div style="display:grid;grid-template-columns:180px 120px 160px 1fr;gap:10px;align-items:center;padding:8px 10px;'
+        + 'border:1px solid #111827;border-radius:8px;background:#0b1224;margin-bottom:8px;font-size:12px;color:#9ca3af;">'
+        + '<div>时间</div><div>用户</div><div>IP</div><div>原始行</div></div>';
+      const rowsHtml = rows.slice(0, 50).map((r) => {
+        const ip = r.ip || "-";
+        const ipColor = (ip !== "-" && !ip.startsWith("10.") && !ip.startsWith("192.168.") && !ip.startsWith("172.16.") && !ip.startsWith("172.17.") && !ip.startsWith("172.18.") && !ip.startsWith("172.19.") && !ip.startsWith("172.2") && !ip.startsWith("172.3")) ? "#f59e0b" : "#9ca3af";
+        return (
+          '<div style="display:grid;grid-template-columns:180px 120px 160px 1fr;gap:10px;align-items:center;padding:8px 10px;border:1px solid #111827;border-radius:8px;background:#020617;margin-bottom:8px;">'
+          + '<div class="status">' + (r.time || "-") + '</div>'
+          + '<div class="status">' + (r.user || "-") + '</div>'
+          + '<div class="status" style="color:' + ipColor + ';">' + ip + '</div>'
+          + '<div class="status" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + String(r.line || "").replaceAll('"','&quot;') + '">' + (r.line || "-") + '</div>'
+          + '</div>'
+        );
+      }).join("");
+      el.innerHTML = header + rowsHtml;
+    }
+
+    async function refreshLoginRecords() {
+      const hostName = document.getElementById("mon-host").value;
+      const hosts = await api("/api/hosts");
+      const h = (hosts || []).find((x) => x.name === hostName);
+      if (!h) return setText("loginrec-status", "请选择已纳管主机（local 不支持）");
+      const limit = parseInt(document.getElementById("login-limit").value || "50", 10);
+      setText("loginrec-status", "加载中...");
+      try {
+        const rows = await api("/api/security/logins?host_id=" + encodeURIComponent(String(h.id)) + "&limit=" + encodeURIComponent(String(limit)));
+        setText("loginrec-status", "已加载 " + (rows ? rows.length : 0) + " 条");
+        renderLoginRecords(rows || []);
+      } catch (e) {
+        setText("loginrec-status", "加载失败：" + e.message);
+      }
+    }
+
+    async function loadLogSources() {
+      const sel = document.getElementById("log-source");
+      if (!sel) return;
+      const hostId = document.getElementById("log-host")?.value || "";
+      try {
+        const srcs = hostId
+          ? await api("/api/logs/sources?host_id=" + encodeURIComponent(String(hostId)))
+          : await api("/api/logs/sources");
+        sel.innerHTML = '<option value="">请选择日志源</option>';
+        (srcs || []).forEach((s) => {
+          const opt = document.createElement("option");
+          opt.value = String(s.id);
+          opt.textContent = (s.remark ? (s.remark + " - ") : "") + s.dir_path + " (host_id=" + s.host_id + ")";
+          sel.appendChild(opt);
+        });
+      } catch (e) {
+        setText("log-status", "加载日志源失败：" + e.message);
+      }
+    }
+
+    async function addLogSource() {
+      const hostId = document.getElementById("log-host")?.value || "";
+      if (!hostId) return setText("log-status", "请选择已纳管主机");
+      const dirPath = document.getElementById("log-dir").value.trim();
+      const remark = document.getElementById("log-remark").value.trim() || null;
+      if (!dirPath) return setText("log-status", "请填写日志目录");
+      setText("log-status", "添加中...");
+      try {
+        await api("/api/logs/sources", { method: "POST", body: JSON.stringify({ host_id: parseInt(hostId, 10), dir_path: dirPath, remark }) });
+        setText("log-status", "已添加日志源");
+        await loadLogSources();
+      } catch (e) {
+        setText("log-status", "添加失败：" + e.message);
+      }
+    }
+
+    async function listLogFiles() {
+      const sourceId = document.getElementById("log-source").value;
+      if (!sourceId) return setText("log-status", "请先选择日志源");
+      setText("log-status", "列文件中...");
+      try {
+        const files = await api("/api/logs/files?source_id=" + encodeURIComponent(sourceId));
+        const box = document.getElementById("log-files");
+        box.innerHTML = "";
+        (files || []).forEach((f) => {
+          const item = document.createElement("div");
+          item.textContent = f;
+          item.style.padding = "4px 6px";
+          item.style.cursor = "pointer";
+          item.style.borderRadius = "6px";
+          item.ondblclick = async () => { await openLogFile(sourceId, f); };
+          item.onmouseenter = () => { item.style.background = "rgba(148,163,184,0.08)"; };
+          item.onmouseleave = () => { item.style.background = "transparent"; };
+          box.appendChild(item);
+        });
+        setText("log-status", "文件数：" + (files ? files.length : 0));
+      } catch (e) {
+        setText("log-status", "列文件失败：" + e.message);
+      }
+    }
+
+    let _logRaw = "";
+    async function openLogFile(sourceId, filename) {
+      setText("log-opened", "打开：" + filename);
+      setText("log-status", "读取中...");
+      try {
+        const content = await api("/api/logs/tail?source_id=" + encodeURIComponent(sourceId) + "&file=" + encodeURIComponent(filename) + "&lines=500");
+        _logRaw = content || "";
+        document.getElementById("log-content").textContent = _logRaw;
+        setText("log-status", "已加载末尾 500 行");
+      } catch (e) {
+        setText("log-status", "读取失败：" + e.message);
+      }
+    }
+
+    function escapeRegExpText(s) {
+      // 不用正则字面量，避免在 Python 字符串中出现转义歧义导致语法错误
+      const specials = new Set(["^", "$", "*", "+", "?", ".", "(", ")", "|", "{", "}", "[", "]", "-"]);
+      // 反斜杠在 Python 三引号字符串里容易产生转义歧义，这里用字符码避免语法错误
+      specials.add(String.fromCharCode(92)); // "\"
+      let out = "";
+      for (const ch of String(s || "")) {
+        out += specials.has(ch) ? (String.fromCharCode(92) + ch) : ch;
+      }
+      return out;
+    }
+
+    function applyLogKeyword() {
+      const kw = document.getElementById("log-keyword").value;
+      const box = document.getElementById("log-content");
+      if (!kw) return;
+      const lines = (_logRaw || "").split(String.fromCharCode(10));
+      const escaped = escapeRegExpText(kw);
+      const re = new RegExp(escaped, "g");
+      const filtered = lines.filter((l) => l.includes(kw));
+      box.innerHTML = filtered.map((l) => String(l).replace(re, "<mark style='background:#f59e0b;color:#111827;'>" + kw + "</mark>")).join("<br/>");
+    }
+
+    function clearLogKeyword() {
+      document.getElementById("log-keyword").value = "";
+      document.getElementById("log-content").textContent = _logRaw || "";
+    }
+
+    async function aiSend() {
+      const prompt = document.getElementById("ai-prompt").value.trim();
+      if (!prompt) return setText("ai-status", "请先输入问题");
+      setText("ai-status", "发送中...");
+      try {
+        const data = await api("/api/ai/chat", { method: "POST", body: JSON.stringify({ prompt, host: document.getElementById("mon-host").value }) });
+        setText("ai-status", "已返回");
+        document.getElementById("ai-reply").textContent = (data && data.reply) ? data.reply : prettyJson(data);
+      } catch (e) {
+        setText("ai-status", "失败：" + e.message);
+      }
+    }
+
+    function levelBadge(level) {
+      const map = { low: ["一般", "#22c55e"], medium: ["中度", "#f59e0b"], high: ["严重", "#ef4444"] };
+      const v = map[level] || [String(level || "-"), "#9ca3af"];
+      return '<span class="pill" style="background:rgba(255,255,255,0.06);border:1px solid #111827;color:#e5e7eb;">'
+        + '<span style="display:inline-block;width:8px;height:8px;border-radius:99px;background:' + v[1] + ';margin-right:6px;"></span>'
+        + v[0] + '</span>';
+    }
+
+    function renderAlertsTable(containerId, data, showCompleteBtn) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      if (!data || !data.length) {
+        el.innerHTML = '<div class="status">暂无告警</div>';
+        return;
+      }
+      // 分页：仅对“告警事件(未完成)”做 10 条/页（历史告警保持原样）
+      let rowsData = data;
+      let pagerHtml = "";
+      if (containerId === "alerts-table") {
+        state.alertsRaw = data || [];
+        const pageSize = 10;
+        const total = data.length;
+        const totalPages = Math.max(1, Math.ceil(total / pageSize));
+        state.alertsPage = Math.min(Math.max(1, state.alertsPage || 1), totalPages);
+        const start = (state.alertsPage - 1) * pageSize;
+        rowsData = data.slice(start, start + pageSize);
+        pagerHtml =
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">'
+          + '<div class="status">第 ' + state.alertsPage + ' / ' + totalPages + ' 页（共 ' + total + ' 条）</div>'
+          + '<div style="display:flex;gap:8px;">'
+          + '<button class="secondary" id="alerts-prev"' + (state.alertsPage <= 1 ? " disabled" : "") + '>上一页</button>'
+          + '<button class="secondary" id="alerts-next"' + (state.alertsPage >= totalPages ? " disabled" : "") + '>下一页</button>'
+          + '</div></div>';
+      }
+      const header =
+        '<div style="display:grid;grid-template-columns:110px 1fr 1fr 170px 90px 90px;gap:10px;align-items:center;padding:8px 10px;'
+        + 'border:1px solid #111827;border-radius:8px;background:#0b1224;margin-bottom:8px;font-size:12px;color:#9ca3af;">'
+        + '<div>告警级别</div>'
+        + '<div>触发器备注</div>'
+        + '<div>具体问题</div>'
+        + '<div>告警时间</div>'
+        + '<div>完成情况</div>'
+        + '<div>操作</div>'
+        + '</div>';
+      const rows = rowsData.map((a) => {
+        const note = a.message || "";
+        const issue = (a.metric || "") + " = " + (typeof a.value === "number" ? a.value.toFixed(1) : a.value) + "% (阈值 " + a.threshold + "%)";
+        const t = new Date(a.created_at).toLocaleString();
+        const status = a.resolved ? "已完成" : "未完成";
+        const btn = showCompleteBtn ? '<button class="secondary" data-complete-id="' + a.id + '">完成</button>' : "";
+        return (
+          '<div style="display:grid;grid-template-columns:110px 1fr 1fr 170px 90px 90px;gap:10px;align-items:center;padding:8px 10px;border:1px solid #111827;border-radius:8px;background:#020617;margin-bottom:8px;">'
+          + '<div>' + levelBadge(a.level) + '</div>'
+          + '<div style="color:#e5e7eb;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + note.replaceAll('"','&quot;') + '">' + (note || "-") + '</div>'
+          + '<div class="status" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + issue.replaceAll('"','&quot;') + '">' + issue + '</div>'
+          + '<div class="status">' + t + '</div>'
+          + '<div class="status">' + status + '</div>'
+          + '<div>' + btn + '</div>'
+          + '</div>'
+        );
+      }).join("");
+      el.innerHTML = header + rows + pagerHtml;
+
+      if (containerId === "alerts-table") {
+        const totalPages = Math.max(1, Math.ceil((data.length || 0) / 10));
+        const prevBtn = document.getElementById("alerts-prev");
+        const nextBtn = document.getElementById("alerts-next");
+        if (prevBtn) prevBtn.addEventListener("click", () => { state.alertsPage = Math.max(1, state.alertsPage - 1); renderAlertsTable("alerts-table", state.alertsRaw || [], true); });
+        if (nextBtn) nextBtn.addEventListener("click", () => { state.alertsPage = Math.min(totalPages, state.alertsPage + 1); renderAlertsTable("alerts-table", state.alertsRaw || [], true); });
+      }
+
+      if (showCompleteBtn) {
+        el.querySelectorAll("button[data-complete-id]").forEach((b) => {
+          b.addEventListener("click", async () => {
+            const id = b.getAttribute("data-complete-id");
+            try {
+              await api("/api/alerts/events/" + encodeURIComponent(id) + "/complete", { method: "POST" });
+              await refreshAlerts();
+            } catch (e) {
+              setText("alerts-status", "完成失败：" + e.message);
+            }
+          });
+        });
+      }
+    }
+
+    async function refreshAlerts() {
+      setText("alerts-status", "加载中...");
+      document.getElementById("alerts-history-card").style.display = "none";
+      try {
+        const data = await api("/api/alerts/events?limit=50");
+        state.alertsPage = 1;
+        setText("alerts-status", "未完成告警 " + data.length + " 条");
+        renderAlertsTable("alerts-table", data, true);
+        // 概览卡片
+        setText("stat-alert-count", String(data.length));
+        if (data.length > 0) {
+          const last = data[0];
+          setText("stat-alert-latest", last.level.toUpperCase() + " " + last.metric + " " + last.value.toFixed(1) + "%");
+        } else {
+          setText("stat-alert-latest", "暂无告警");
+        }
+        await loadTriggers(false);
+      } catch (e) {
+        setText("alerts-status", "加载失败：" + e.message);
+      }
+    }
+
+    async function refreshAlertsHistory() {
+      setText("alerts-history-status", "加载中...");
+      document.getElementById("alerts-history-card").style.display = "block";
+      try {
+        const data = await api("/api/alerts/events/history?limit=200");
+        setText("alerts-history-status", "历史告警 " + data.length + " 条");
+        renderAlertsTable("alerts-history-table", data, false);
+      } catch (e) {
+        setText("alerts-history-status", "加载失败：" + e.message);
+      }
+    }
+
+    async function loadTriggers(showStatus = true) {
+      if (showStatus) setText("trg-status", "加载触发器中...");
+      try {
+        const data = await api("/api/alerts/triggers");
+        renderTriggersTable(data);
+        // 填充删除下拉框
+        const sel = document.getElementById("trg-delete-id");
+        if (sel) {
+          const cur = sel.value;
+          sel.innerHTML = '<option value="">请选择触发器</option>';
+          data.forEach((t) => {
+            const label = "#" + t.id + " " + t.metric + " " + t.op + " " + t.value + "% [" + t.level + "] " + (t.enabled ? "on" : "off");
+            const opt = document.createElement("option");
+            opt.value = String(t.id);
+            opt.textContent = label;
+            sel.appendChild(opt);
+          });
+          if (cur) sel.value = cur;
+        }
+        if (showStatus) setText("trg-status", "共 " + data.length + " 个触发器");
+      } catch (e) {
+        if (showStatus) setText("trg-status", "加载失败：" + e.message);
+      }
+    }
+
+    function metricLabel(m) {
+      if (m === "cpu") return "CPU";
+      if (m === "mem") return "内存";
+      if (m === "disk") return "磁盘";
+      return String(m || "-");
+    }
+
+    function renderTriggersTable(data) {
+      const el = document.getElementById("trg-table");
+      if (!el) return;
+      if (!data || !data.length) {
+        el.innerHTML = '<div class="status">暂无触发器</div>';
+        return;
+      }
+      const header =
+        '<div style="display:grid;grid-template-columns:160px 140px 1fr 200px;gap:10px;align-items:center;padding:8px 10px;'
+        + 'border:1px solid #111827;border-radius:8px;background:#0b1224;margin-bottom:8px;font-size:12px;color:#9ca3af;">'
+        + '<div>监控主机名</div>'
+        + '<div>监控项</div>'
+        + '<div>触发条件</div>'
+        + '<div>创建时间</div>'
+        + '</div>';
+      const rows = data.map((t) => {
+        const host = t.host || "local";
+        const cond = metricLabel(t.metric) + " " + t.op + " " + t.value + "%";
+        const created = t.created_at ? new Date(t.created_at).toLocaleString() : "-";
+        return (
+          '<div style="display:grid;grid-template-columns:160px 140px 1fr 200px;gap:10px;align-items:center;padding:8px 10px;'
+          + 'border:1px solid #111827;border-radius:8px;background:#020617;margin-bottom:8px;">'
+          + '<div style="font-size:13px;color:#e5e7eb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + host.replaceAll('"','&quot;') + '">' + host + '</div>'
+          + '<div class="status">' + metricLabel(t.metric) + '</div>'
+          + '<div class="status" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + cond.replaceAll('"','&quot;') + '">' + cond + '</div>'
+          + '<div class="status">' + created + '</div>'
+          + '</div>'
+        );
+      }).join("");
+      el.innerHTML = header + rows;
+    }
+
+    async function createTrigger() {
+      const host = document.getElementById("trg-host").value;
+      const metric = document.getElementById("trg-metric").value;
+      const op = document.getElementById("trg-op").value;
+      const value = parseFloat(document.getElementById("trg-value").value || "0");
+      const level = document.getElementById("trg-level").value;
+      const desc = document.getElementById("trg-desc").value.trim() || null;
+      const emailTo = document.getElementById("trg-email").value.trim() || null;
+      setText("trg-status", "创建中...");
+      try {
+        await api("/api/alerts/triggers", {
+          method: "POST",
+          body: JSON.stringify({ host, metric, op, value, level, description: desc, email_to: emailTo }),
+        });
+        setText("trg-status", "触发器已创建");
+        await loadTriggers(false);
+      } catch (e) {
+        setText("trg-status", "创建失败：" + e.message);
+      }
+    }
+
+    async function testTrigger() {
+      const host = document.getElementById("trg-test-host").value;
+      const metric = document.getElementById("trg-test-metric").value;
+      const value = parseFloat(document.getElementById("trg-test-value").value || "0");
+      setText("trg-status", "测试中...");
+      try {
+        const data = await api("/api/alerts/triggers/test", {
+          method: "POST",
+          body: JSON.stringify({ host, metric, op: ">=", value, level: "low", description: null }),
+        });
+        const hits = data.hits || [];
+        if (!hits.length) {
+          setText("trg-status", "测试值 " + value + "% 未命中任何触发器");
+        } else {
+          setText("trg-status", "测试值 " + value + "% 命中 " + hits.length + " 个触发器，已写入 " + (data.fired_events || 0) + " 条测试告警事件");
+        }
+        await refreshAlerts();
+      } catch (e) {
+        setText("trg-status", "测试失败：" + e.message);
+      }
+    }
+
+    async function deleteTrigger() {
+      const id = document.getElementById("trg-delete-id").value;
+      if (!id) {
+        setText("trg-status", "请先选择要删除的触发器");
+        return;
+      }
+      setText("trg-status", "删除中...");
+      try {
+        await api("/api/alerts/triggers/" + encodeURIComponent(id), { method: "DELETE" });
+        setText("trg-status", "已删除触发器 #" + id);
+        await loadTriggers(false);
+      } catch (e) {
+        setText("trg-status", "删除失败：" + e.message);
+      }
+    }
+
+    async function dbHealth() {
+      setText("db-health-status", "检查中...");
+      try {
+        const data = await api("/api/db/health");
+        setText("db-health-status", "状态: " + data.status + " / db=" + data.db + (data.detail ? " (" + data.detail + ")" : ""));
+        setText("stat-db-health", data.status === "ok" ? "正常" : "异常");
+        setText("stat-db-detail", data.detail || "");
+      } catch (e) {
+        setText("db-health-status", "健康检查失败：" + e.message);
+      }
+    }
+
+    async function dbLoadBackups() {
+      try {
+        const data = await api("/api/db/backups");
+        setText("db-backups-output", prettyJson(data));
+      } catch (e) {
+        setText("db-backups-output", "加载备份列表失败：" + e.message);
+      }
+    }
+
+    async function dbBackup() {
+      const name = document.getElementById("db-backup-name").value.trim();
+      setText("db-backup-status", "创建备份中...");
+      try {
+        const q = name ? "?name=" + encodeURIComponent(name) : "";
+        const data = await api("/api/db/backup" + q, { method: "POST" });
+        setText("db-backup-status", "备份成功：" + data.name);
+        await dbLoadBackups();
+      } catch (e) {
+        setText("db-backup-status", "备份失败：" + e.message);
+      }
+    }
+
+    async function dbRestore() {
+      const name = document.getElementById("db-restore-name").value.trim();
+      if (!name) {
+        setText("db-backup-status", "请先填写要恢复的备份文件名");
+        return;
+      }
+      setText("db-backup-status", "恢复中...");
+      try {
+        const q = "?name=" + encodeURIComponent(name);
+        await api("/api/db/restore" + q, { method: "POST" });
+        setText("db-backup-status", "恢复成功（建议重启服务后再验证数据）");
+      } catch (e) {
+        setText("db-backup-status", "恢复失败：" + e.message);
+      }
+    }
+
+    async function dbRollback() {
+      setText("db-backup-status", "回滚中...");
+      try {
+        await api("/api/db/rollback", { method: "POST" });
+        setText("db-backup-status", "已回滚到最近备份（建议重启服务后再验证数据）");
+      } catch (e) {
+        setText("db-backup-status", "回滚失败：" + e.message);
+      }
+    }
+
+    async function refreshOverview() {
+      await Promise.allSettled([dbHealth(), refreshAlerts(), refreshHostDashboard()]);
+    }
+
+    function renderHostCard(hostName, meta, latest) {
+      const fmt = (v) => (typeof v === "number" ? v.toFixed(1) + "%" : "-");
+      const cpu = latest ? Math.max(0, Math.min(100, latest.cpu_percent || 0)) : 0;
+      const mem = latest ? Math.max(0, Math.min(100, latest.mem_percent || 0)) : 0;
+      const disk = latest ? Math.max(0, Math.min(100, latest.disk_percent || 0)) : 0;
+      const ts = latest && latest.created_at ? new Date(latest.created_at).toLocaleString() : "-";
+      const title = latest
+        ? (hostName + " @ " + ts + "\nCPU " + fmt(latest.cpu_percent) + "  MEM " + fmt(latest.mem_percent) + "  DISK " + fmt(latest.disk_percent))
+        : (hostName + "\n暂无监控数据（等待每分钟自动采集或手动采集）");
+      const subtitle = meta ? (meta.ip + (meta.cloud_provider ? " · " + meta.cloud_provider : "")) : "";
+      return (
+        '<div class="stat" title="' + title.replaceAll('"', "&quot;") + '">'
+        + '<div class="stat-label" style="display:flex;justify-content:space-between;gap:8px;">'
+        + '<span style="color:#e5e7eb;">' + hostName + '</span>'
+        + '<span class="status" style="font-size:11px;">' + subtitle + '</span>'
+        + '</div>'
+        + '<div class="row" style="gap:8px;flex-wrap:nowrap;">'
+        + '  <div style="flex:1 1 0;">'
+        + '    <div class="status">CPU</div><div class="stat-value" style="font-size:14px;">' + fmt(latest && latest.cpu_percent) + '</div>'
+        + '    <div style="position:relative;width:100%;height:6px;border-radius:999px;background:#020617;border:1px solid #111827;overflow:hidden;">'
+        + '      <div style="position:absolute;left:0;top:0;bottom:0;width:' + cpu + '%;background:#22c55e;"></div>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div style="flex:1 1 0;">'
+        + '    <div class="status">MEM</div><div class="stat-value" style="font-size:14px;">' + fmt(latest && latest.mem_percent) + '</div>'
+        + '    <div style="position:relative;width:100%;height:6px;border-radius:999px;background:#020617;border:1px solid #111827;overflow:hidden;">'
+        + '      <div style="position:absolute;left:0;top:0;bottom:0;width:' + mem + '%;background:#38bdf8;"></div>'
+        + '    </div>'
+        + '  </div>'
+        + '  <div style="flex:1 1 0;">'
+        + '    <div class="status">DISK</div><div class="stat-value" style="font-size:14px;">' + fmt(latest && latest.disk_percent) + '</div>'
+        + '    <div style="position:relative;width:100%;height:6px;border-radius:999px;background:#020617;border:1px solid #111827;overflow:hidden;">'
+        + '      <div style="position:absolute;left:0;top:0;bottom:0;width:' + disk + '%;background:#f97316;"></div>'
+        + '    </div>'
+        + '  </div>'
+        + '</div>'
+        + '<div class="status" style="margin-top:6px;">时间：' + ts + '</div>'
+        + '</div>'
+      );
+    }
+
+    async function refreshHostDashboard() {
+      const el = document.getElementById("host-dashboard");
+      if (!el) return;
+      if (!state.accessToken) {
+        el.innerHTML = '<div class="status">请先登录后查看主机看板</div>';
+        return;
+      }
+      try {
+        const hosts = await api("/api/hosts");
+        const all = [{ name: "local", ip: "127.0.0.1", cloud_provider: "local" }, ...hosts];
+        const metricsList = await Promise.all(
+          all.map(async (h) => {
+            try {
+              const m = await api("/api/monitoring/metrics?host=" + encodeURIComponent(h.name) + "&limit=1");
+              return { host: h, latest: m && m.length ? m[0] : null };
+            } catch {
+              return { host: h, latest: null };
+            }
+          })
+        );
+        el.innerHTML = metricsList.map((x) => renderHostCard(x.host.name, x.host, x.latest)).join("");
+      } catch (e) {
+        el.innerHTML = '<div class="status">加载主机看板失败：' + e.message + '</div>';
+      }
+    }
+
+    async function refreshHostsDashboard() {
+      const el = document.getElementById("hosts-dashboard");
+      if (!el) return;
+      if (!state.accessToken) {
+        el.innerHTML = '<div class="status">请先登录后查看</div>';
+        return;
+      }
+      try {
+        const hosts = await api("/api/hosts");
+        const all = [{ name: "local", ip: "127.0.0.1", cloud_provider: "local" }, ...hosts];
+        const metricsList = await Promise.all(
+          all.map(async (h) => {
+            try {
+              const m = await api("/api/monitoring/metrics?host=" + encodeURIComponent(h.name) + "&limit=1");
+              return { host: h, latest: m && m.length ? m[0] : null };
+            } catch {
+              return { host: h, latest: null };
+            }
+          })
+        );
+        el.innerHTML = metricsList.map((x) => renderHostCard(x.host.name, x.host, x.latest)).join("");
+      } catch (e) {
+        el.innerHTML = '<div class="status">加载失败：' + e.message + '</div>';
+      }
+    }
+
+    function renderHostsTable(data) {
+      const el = document.getElementById("hosts-table");
+      if (!el) return;
+      if (!data || !data.length) {
+        el.innerHTML = '<div class="status">暂无主机</div>';
+        return;
+      }
+      const header =
+        '<div style="display:grid;grid-template-columns:140px 160px 120px 1fr 160px 200px;gap:10px;align-items:center;padding:8px 10px;'
+        + 'border:1px solid #111827;border-radius:8px;background:#0b1224;margin-bottom:8px;font-size:12px;color:#9ca3af;">'
+        + '<div>主机名</div><div>IP</div><div>云厂商</div><div>探测信息</div><div>创建时间</div><div>操作</div></div>';
+      const rows = data.map((h) => {
+        const info = (h.hostname ? h.hostname : "-") + (h.os_info ? (" · " + h.os_info) : "");
+        const created = h.created_at ? new Date(h.created_at).toLocaleString() : "-";
+        const ops =
+          '<button class="secondary" data-host-edit="' + h.id + '">编辑</button>'
+          + ' <button class="secondary" data-host-toggle="' + h.id + '">' + (h.enabled ? "停用" : "启用") + '</button>'
+          + ' <button class="secondary" data-host-del="' + h.id + '">删除</button>';
+        return (
+          '<div style="display:grid;grid-template-columns:140px 160px 120px 1fr 160px 200px;gap:10px;align-items:center;padding:8px 10px;'
+          + 'border:1px solid #111827;border-radius:8px;background:#020617;margin-bottom:8px;">'
+          + '<div style="color:#e5e7eb;">' + h.name + '</div>'
+          + '<div class="status">' + h.ip + ':' + h.port + ' (' + h.username + ')</div>'
+          + '<div class="status">' + (h.cloud_provider || "-") + '</div>'
+          + '<div class="status" title="' + info.replaceAll('"','&quot;') + '" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + info + '</div>'
+          + '<div class="status">' + created + '</div>'
+          + '<div>' + ops + '</div>'
+          + '</div>'
+        );
+      }).join("");
+      el.innerHTML = header + rows;
+      el.querySelectorAll("button[data-host-toggle]").forEach((b) => {
+        b.addEventListener("click", async () => {
+          const id = b.getAttribute("data-host-toggle");
+          try { await api("/api/hosts/" + encodeURIComponent(id) + "/toggle", { method: "POST" }); await loadHosts(); } catch (e) { setText("hosts-status", "操作失败：" + e.message); }
+        });
+      });
+      el.querySelectorAll("button[data-host-del]").forEach((b) => {
+        b.addEventListener("click", async () => {
+          const id = b.getAttribute("data-host-del");
+          try { await api("/api/hosts/" + encodeURIComponent(id), { method: "DELETE" }); await loadHosts(); } catch (e) { setText("hosts-status", "删除失败：" + e.message); }
+        });
+      });
+      el.querySelectorAll("button[data-host-edit]").forEach((b) => {
+        b.addEventListener("click", async () => {
+          const id = b.getAttribute("data-host-edit");
+          const host = data.find(x => String(x.id) === String(id));
+          if (!host) return;
+          state.editingHostId = host.id;
+          document.getElementById("host-name").value = host.name;
+          document.getElementById("host-ip").value = host.ip;
+          document.getElementById("host-user").value = host.username;
+          document.getElementById("host-port").value = host.port;
+          document.getElementById("host-cloud").value = host.cloud_provider || "";
+          document.getElementById("host-key").value = ""; // 不回显私钥
+          document.getElementById("btn-host-add").style.display = "none";
+          document.getElementById("btn-host-save").style.display = "inline-block";
+          document.getElementById("btn-host-cancel").style.display = "inline-block";
+          setText("hosts-status", "编辑主机 #" + host.id + "（如需更新密钥，请重新粘贴私钥）");
+        });
+      });
+    }
+
+    async function loadHosts() {
+      setText("hosts-status", "加载中...");
+      try {
+        const data = await api("/api/hosts");
+        setText("hosts-status", "共 " + data.length + " 台主机");
+        renderHostsTable(data);
+        await refreshHostsDashboard();
+      } catch (e) {
+        setText("hosts-status", "加载失败：" + e.message);
+      }
+    }
+
+    async function fillHostSelects() {
+      try {
+        const hosts = await api("/api/hosts");
+        const all = [{ name: "local" }, ...hosts];
+        const sel1 = document.getElementById("trg-host");
+        const sel2 = document.getElementById("trg-test-host");
+        const selUm = document.getElementById("um-host");
+        const selRes = document.getElementById("res-host");
+        const selMon = document.getElementById("mon-host");
+        const selLogHost = document.getElementById("log-host");
+        [sel1, sel2].forEach((sel) => {
+          if (!sel) return;
+          const cur = sel.value;
+          sel.innerHTML = "";
+          all.forEach((h) => {
+            const opt = document.createElement("option");
+            opt.value = h.name;
+            opt.textContent = h.name;
+            sel.appendChild(opt);
+          });
+          if (cur) sel.value = cur;
+        });
+        if (selUm) {
+          const cur = selUm.value;
+          selUm.innerHTML = '<option value="">请选择主机</option>';
+          hosts.forEach((h) => {
+            const opt = document.createElement("option");
+            opt.value = String(h.id);
+            opt.textContent = h.name + " (" + h.ip + ")";
+            selUm.appendChild(opt);
+          });
+          if (cur) selUm.value = cur;
+        }
+        if (selRes) {
+          const cur = selRes.value;
+          selRes.innerHTML = '<option value="">请选择主机</option>';
+          hosts.forEach((h) => {
+            const opt = document.createElement("option");
+            opt.value = String(h.id);
+            opt.textContent = h.name + " (" + h.ip + ")";
+            selRes.appendChild(opt);
+          });
+          if (cur) selRes.value = cur;
+        }
+        if (selMon) {
+          const cur = selMon.value;
+          selMon.innerHTML = '<option value="local">local</option>';
+          hosts.forEach((h) => {
+            const opt = document.createElement("option");
+            opt.value = h.name;
+            opt.textContent = h.name + " (" + h.ip + ")";
+            selMon.appendChild(opt);
+          });
+          if (cur) selMon.value = cur;
+        }
+        if (selLogHost) {
+          const cur = selLogHost.value;
+          selLogHost.innerHTML = '<option value="">请选择主机</option>';
+          hosts.forEach((h) => {
+            const opt = document.createElement("option");
+            opt.value = String(h.id);
+            opt.textContent = h.name + " (" + h.ip + ")";
+            selLogHost.appendChild(opt);
+          });
+          if (cur) selLogHost.value = cur;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    function renderUserTable(users) {
+      const el = document.getElementById("um-table");
+      if (!el) return;
+      if (!users || !users.length) {
+        el.innerHTML = '<div class="status">暂无用户数据</div>';
+        return;
+      }
+      state.umUsersRaw = users || [];
+      const pageSize = 10;
+      const total = users.length;
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      state.umPage = Math.min(Math.max(1, state.umPage || 1), totalPages);
+      const start = (state.umPage - 1) * pageSize;
+      const pageUsers = users.slice(start, start + pageSize);
+      const header =
+        '<div style="display:grid;grid-template-columns:160px 90px 90px 1fr 160px 240px;gap:10px;align-items:center;padding:8px 10px;'
+        + 'border:1px solid #111827;border-radius:8px;background:#0b1224;margin-bottom:8px;font-size:12px;color:#9ca3af;">'
+        + '<div>用户名</div><div>UID</div><div>GID</div><div>HOME</div><div>SHELL</div><div>操作</div></div>';
+      const rows = pageUsers.map((u) => {
+        const ops =
+          '<button class="secondary" data-um-manage="' + u.username + '">管理</button>'
+          + ' <button class="secondary" data-um-del="' + u.username + '">删除</button>';
+        return (
+          '<div style="display:grid;grid-template-columns:160px 90px 90px 1fr 160px 240px;gap:10px;align-items:center;padding:8px 10px;'
+          + 'border:1px solid #111827;border-radius:8px;background:#020617;margin-bottom:8px;">'
+          + '<div style="color:#e5e7eb;">' + u.username + '</div>'
+          + '<div class="status">' + u.uid + '</div>'
+          + '<div class="status">' + u.gid + '</div>'
+          + '<div class="status" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + String(u.home).replaceAll('"','&quot;') + '">' + u.home + '</div>'
+          + '<div class="status" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + String(u.shell).replaceAll('"','&quot;') + '">' + u.shell + '</div>'
+          + '<div>' + ops + '</div>'
+          + '</div>'
+        );
+      }).join("");
+      const pager =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;">'
+        + '<div class="status">第 ' + state.umPage + ' / ' + totalPages + ' 页（共 ' + total + ' 条）</div>'
+        + '<div style="display:flex;gap:8px;">'
+        + '<button class="secondary" id="um-prev"' + (state.umPage <= 1 ? " disabled" : "") + '>上一页</button>'
+        + '<button class="secondary" id="um-next"' + (state.umPage >= totalPages ? " disabled" : "") + '>下一页</button>'
+        + '</div></div>';
+      el.innerHTML = header + rows + pager;
+
+      const prevBtn = document.getElementById("um-prev");
+      const nextBtn = document.getElementById("um-next");
+      if (prevBtn) prevBtn.addEventListener("click", () => { state.umPage = Math.max(1, state.umPage - 1); renderUserTable(state.umUsersRaw || []); });
+      if (nextBtn) nextBtn.addEventListener("click", () => { state.umPage = Math.min(totalPages, state.umPage + 1); renderUserTable(state.umUsersRaw || []); });
+
+      const hostId = document.getElementById("um-host").value;
+      el.querySelectorAll("button[data-um-del]").forEach((b) => {
+        b.addEventListener("click", async () => {
+          const username = b.getAttribute("data-um-del");
+          if (!confirm("确认删除用户 " + username + " 吗？该操作可能会删除其 home 目录。")) return;
+          setText("um-status", "删除中...");
+          try {
+            await api("/api/remote-users?host_id=" + encodeURIComponent(hostId) + "&username=" + encodeURIComponent(username), { method: "DELETE" });
+            setText("um-status", "已删除用户 " + username);
+            await refreshRemoteUsers();
+          } catch (e) {
+            setText("um-status", "删除失败：" + e.message);
+          }
+        });
+      });
+      el.querySelectorAll("button[data-um-manage]").forEach((b) => {
+        b.addEventListener("click", async () => {
+          const username = b.getAttribute("data-um-manage");
+          await openUmManage(username);
+        });
+      });
+    }
+
+    async function openUmManage(username) {
+      const hostId = document.getElementById("um-host").value;
+      if (!hostId) {
+        setText("um-status", "请先选择主机");
+        return;
+      }
+      state.umSelectedUser = username;
+      setText("um-manage-title", username + "（host_id=" + hostId + "）");
+      document.getElementById("um-manage-backdrop").style.display = "flex";
+      setText("um-manage-status", "加载用户组信息中...");
+      try {
+        const info = await api("/api/remote-users/groups?host_id=" + encodeURIComponent(hostId) + "&username=" + encodeURIComponent(username));
+        state.umSelectedGroups = info;
+        document.getElementById("um-primary-group").textContent = info.primary_group || "-";
+        document.getElementById("um-supp-groups").textContent = (info.supplementary_groups || []).join(", ") || "-";
+        setText("um-manage-status", "已加载");
+      } catch (e) {
+        setText("um-manage-status", "加载失败：" + e.message);
+      }
+    }
+
+    async function reloadUmGroups() {
+      if (!state.umSelectedUser) return;
+      await openUmManage(state.umSelectedUser);
+    }
+
+    async function refreshRemoteUsers() {
+      const hostId = document.getElementById("um-host").value;
+      if (!hostId) {
+        setText("um-status", "请先选择主机");
+        return;
+      }
+      setText("um-status", "加载中...");
+      try {
+        const users = await api("/api/remote-users?host_id=" + encodeURIComponent(hostId));
+        state.umPage = 1;
+        setText("um-status", "用户数：" + users.length);
+        renderUserTable(users);
+      } catch (e) {
+        setText("um-status", "加载失败：" + e.message);
+      }
+    }
+
+    async function createRemoteUser() {
+      const hostId = document.getElementById("um-host").value;
+      const username = document.getElementById("um-new-username").value.trim();
+      const password = document.getElementById("um-new-password").value;
+      const password2 = document.getElementById("um-new-password2").value;
+      const makeSudo = document.getElementById("um-new-sudo").value === "true";
+      if (!hostId) {
+        setText("um-status", "请先选择主机");
+        return;
+      }
+      if (!username) {
+        setText("um-status", "请填写用户名");
+        return;
+      }
+      if (!password || password.length < 6) {
+        setText("um-status", "请填写密码（至少 6 位）");
+        return;
+      }
+      if (password !== password2) {
+        setText("um-status", "两次输入的密码不一致");
+        return;
+      }
+      setText("um-status", "创建中...");
+      try {
+        await api("/api/remote-users?host_id=" + encodeURIComponent(hostId), {
+          method: "POST",
+          body: JSON.stringify({ username, password, make_sudo: makeSudo }),
+        });
+        setText("um-status", "已创建用户 " + username);
+        document.getElementById("um-new-username").value = "";
+        document.getElementById("um-new-password").value = "";
+        document.getElementById("um-new-password2").value = "";
+        await refreshRemoteUsers();
+      } catch (e) {
+        setText("um-status", "创建失败：" + e.message);
+      }
+    }
+
+    async function addHost() {
+      setText("hosts-status", "添加中...");
+      try {
+        const body = {
+          name: document.getElementById("host-name").value.trim(),
+          ip: document.getElementById("host-ip").value.trim(),
+          username: document.getElementById("host-user").value.trim() || "root",
+          port: parseInt(document.getElementById("host-port").value || "22", 10),
+          cloud_provider: document.getElementById("host-cloud").value.trim() || null,
+          ssh_key_path: document.getElementById("host-key-path").value.trim() || null,
+          ssh_private_key: document.getElementById("host-key").value || null,
+        };
+        await api("/api/hosts", { method: "POST", body: JSON.stringify(body) });
+        setText("hosts-status", "添加成功：SSH 校验通过，已采集一次监控数据");
+        await loadHosts();
+        await fillHostSelects();
+        await refreshHostDashboard();
+      } catch (e) {
+        setText("hosts-status", "添加失败：" + e.message);
+      }
+    }
+
+    async function saveHostEdit() {
+      if (!state.editingHostId) {
+        setText("hosts-status", "当前未选择编辑的主机");
+        return;
+      }
+      setText("hosts-status", "保存中...");
+      try {
+        const body = {
+          name: document.getElementById("host-name").value.trim() || null,
+          ip: document.getElementById("host-ip").value.trim() || null,
+          username: document.getElementById("host-user").value.trim() || null,
+          port: parseInt(document.getElementById("host-port").value || "22", 10),
+          cloud_provider: document.getElementById("host-cloud").value.trim() || null,
+        };
+        const keyPath = document.getElementById("host-key-path").value.trim();
+        if (keyPath) body.ssh_key_path = keyPath;
+        const key = document.getElementById("host-key").value.trim();
+        if (key) body.ssh_private_key = key;
+        await api("/api/hosts/" + encodeURIComponent(state.editingHostId), { method: "PUT", body: JSON.stringify(body) });
+        setText("hosts-status", "保存成功");
+        cancelHostEdit();
+        await loadHosts();
+        await fillHostSelects();
+        await refreshHostDashboard();
+      } catch (e) {
+        setText("hosts-status", "保存失败：" + e.message);
+      }
+    }
+
+    function cancelHostEdit() {
+      state.editingHostId = null;
+      document.getElementById("btn-host-add").style.display = "inline-block";
+      document.getElementById("btn-host-save").style.display = "none";
+      document.getElementById("btn-host-cancel").style.display = "none";
+      // 不清空表单，让用户可继续添加/修改；只更新状态提示
+    }
+
+    function drawChart() {
+      const canvas = document.getElementById("chart-metrics");
+      if (!canvas || !canvas.getContext) return;
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width = canvas.clientWidth;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "#020617";
+      ctx.fillRect(0, 0, w, h);
+
+      const data = state.chartData || [];
+      if (!data.length) {
+        ctx.fillStyle = "#6b7280";
+        ctx.font = "12px system-ui";
+        ctx.fillText("暂无监控数据", 10, h / 2);
+        return;
+      }
+
+      const maxY = 100;
+      const leftPadding = 26;
+      const bottomPadding = 16;
+      const topPadding = 8;
+      const plotW = w - leftPadding - 6;
+      const plotH = h - bottomPadding - topPadding;
+
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(leftPadding, topPadding);
+      ctx.lineTo(leftPadding, topPadding + plotH);
+      ctx.lineTo(leftPadding + plotW, topPadding + plotH);
+      ctx.stroke();
+
+      const series = [
+        { key: "cpu_percent", color: "#22c55e" },
+        { key: "mem_percent", color: "#38bdf8" },
+        { key: "disk_percent", color: "#f97316" },
+      ];
+
+      function y(v) {
+        const ratio = Math.max(0, Math.min(1, v / maxY));
+        return topPadding + plotH - ratio * plotH;
+      }
+
+      const stepX = data.length > 1 ? plotW / (data.length - 1) : 0;
+      series.forEach((s) => {
+        ctx.beginPath();
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2;
+        data.forEach((row, idx) => {
+          const x = leftPadding + stepX * idx;
+          const v = typeof row[s.key] === "number" ? row[s.key] : 0;
+          const yy = y(v);
+          if (idx === 0) ctx.moveTo(x, yy);
+          else ctx.lineTo(x, yy);
+        });
+        ctx.stroke();
+      });
+
+      ctx.fillStyle = "#6b7280";
+      ctx.font = "10px system-ui";
+      ctx.fillText("100%", 2, topPadding + 6);
+      ctx.fillText("0%", 8, topPadding + plotH);
+    }
+
+    function initMenu() {
+      const buttons = document.querySelectorAll(".menu-btn");
+      buttons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          buttons.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          const pageId = btn.getAttribute("data-page");
+          document.querySelectorAll(".tab-page").forEach(p => {
+            p.classList.toggle("active", p.id === pageId);
+          });
+          if (pageId === "page-overview") {
+            drawChart();
+          }
+        });
+      });
+    }
+
+    const logoutBtn = document.getElementById("user-menu-logout");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", async () => {
+        try {
+          loadTokens();
+          if (state.accessToken) {
+            await fetch(state.baseUrl + "/api/auth/logout", {
+              method: "POST",
+              headers: { Authorization: "Bearer " + state.accessToken },
+            }).catch(() => {});
+          }
+        } catch {}
+        clearTokens();
+        try { localStorage.removeItem(USERNAME_STORAGE_KEY); } catch {}
+        window.location.href = "/ui-login";
+      });
+    }
+    const manageBtn = document.getElementById("user-menu-manage");
+    if (manageBtn) {
+      manageBtn.addEventListener("click", () => {
+        const btn = document.querySelector('.menu-btn[data-page="page-user-mgmt"]');
+        if (btn) btn.click();
+      });
+    }
+    on("btn-collect", "click", collectOnce);
+    on("btn-mon-refresh", "click", refreshMonitorScreen);
+    on("mon-host", "change", refreshMonitorScreen);
+    on("mon-limit", "change", refreshMonitorScreen);
+    on("btn-smtp-load", "click", loadSmtpSetting);
+    on("btn-smtp-save", "click", saveSmtpSetting);
+    on("btn-smtp-test", "click", testSmtpSetting);
+    on("btn-login-refresh", "click", refreshLoginRecords);
+    on("btn-log-add", "click", addLogSource);
+    on("btn-log-refresh", "click", loadLogSources);
+    on("log-host", "change", loadLogSources);
+    on("btn-log-files", "click", listLogFiles);
+    on("btn-log-apply", "click", applyLogKeyword);
+    on("btn-log-clear", "click", clearLogKeyword);
+    on("btn-ai-send", "click", aiSend);
+    on("btn-refresh-alerts", "click", refreshAlerts);
+    on("btn-refresh-alerts-history", "click", refreshAlertsHistory);
+    on("btn-db-health", "click", dbHealth);
+    on("btn-db-backup", "click", dbBackup);
+    on("btn-db-restore", "click", dbRestore);
+    on("btn-db-rollback", "click", dbRollback);
+    on("btn-trg-create", "click", createTrigger);
+    on("btn-trg-test", "click", testTrigger);
+    on("btn-trg-delete", "click", deleteTrigger);
+    on("btn-host-add", "click", addHost);
+    on("btn-host-save", "click", saveHostEdit);
+    on("btn-host-cancel", "click", cancelHostEdit);
+    on("btn-um-refresh", "click", refreshRemoteUsers);
+    on("btn-um-create", "click", createRemoteUser);
+    on("btn-um-close", "click", () => {
+      state.umSelectedUser = null;
+      state.umSelectedGroups = null;
+      document.getElementById("um-manage-backdrop").style.display = "none";
+      setText("um-manage-status", "");
+    });
+    on("btn-um-setpass", "click", async () => {
+      const hostId = document.getElementById("um-host").value;
+      const username = state.umSelectedUser;
+      const p1 = document.getElementById("um-mgr-pass").value;
+      const p2 = document.getElementById("um-mgr-pass2").value;
+      if (!hostId || !username) return setText("um-manage-status", "请先选择用户");
+      if (!p1 || p1.length < 6) return setText("um-manage-status", "新密码至少 6 位");
+      if (p1 !== p2) return setText("um-manage-status", "两次输入的密码不一致");
+      setText("um-manage-status", "修改密码中...");
+      try {
+        await api("/api/remote-users/password?host_id=" + encodeURIComponent(hostId) + "&username=" + encodeURIComponent(username), {
+          method: "POST",
+          body: JSON.stringify({ password: p1 }),
+        });
+        document.getElementById("um-mgr-pass").value = "";
+        document.getElementById("um-mgr-pass2").value = "";
+        setText("um-manage-status", "密码已更新");
+      } catch (e) {
+        setText("um-manage-status", "修改失败：" + e.message);
+      }
+    });
+    on("btn-um-setprimary", "click", async () => {
+      const hostId = document.getElementById("um-host").value;
+      const username = state.umSelectedUser;
+      const group = document.getElementById("um-mgr-primary").value.trim();
+      if (!hostId || !username) return setText("um-manage-status", "请先选择用户");
+      if (!group) return setText("um-manage-status", "请输入主组名称");
+      setText("um-manage-status", "设置主组中...");
+      try {
+        await api("/api/remote-users/groups/primary?host_id=" + encodeURIComponent(hostId) + "&username=" + encodeURIComponent(username), {
+          method: "POST",
+          body: JSON.stringify({ group }),
+        });
+        setText("um-manage-status", "主组已更新");
+        await reloadUmGroups();
+      } catch (e) {
+        setText("um-manage-status", "设置失败：" + e.message);
+      }
+    });
+    on("btn-um-addgroup", "click", async () => {
+      const hostId = document.getElementById("um-host").value;
+      const username = state.umSelectedUser;
+      const group = document.getElementById("um-mgr-group").value.trim();
+      if (!hostId || !username) return setText("um-manage-status", "请先选择用户");
+      if (!group) return setText("um-manage-status", "请输入组名");
+      setText("um-manage-status", "添加附加组中...");
+      try {
+        await api("/api/remote-users/groups/supp/add?host_id=" + encodeURIComponent(hostId) + "&username=" + encodeURIComponent(username), {
+          method: "POST",
+          body: JSON.stringify({ group }),
+        });
+        setText("um-manage-status", "已添加附加组：" + group);
+        await reloadUmGroups();
+      } catch (e) {
+        setText("um-manage-status", "添加失败：" + e.message);
+      }
+    });
+    on("btn-um-rmgroup", "click", async () => {
+      const hostId = document.getElementById("um-host").value;
+      const username = state.umSelectedUser;
+      const group = document.getElementById("um-mgr-group").value.trim();
+      if (!hostId || !username) return setText("um-manage-status", "请先选择用户");
+      if (!group) return setText("um-manage-status", "请输入组名");
+      setText("um-manage-status", "移除附加组中...");
+      try {
+        await api("/api/remote-users/groups/supp/remove?host_id=" + encodeURIComponent(hostId) + "&username=" + encodeURIComponent(username), {
+          method: "POST",
+          body: JSON.stringify({ group }),
+        });
+        setText("um-manage-status", "已移除附加组：" + group);
+        await reloadUmGroups();
+      } catch (e) {
+        setText("um-manage-status", "移除失败：" + e.message);
+      }
+    });
+    on("btn-res-proc", "click", () => { refreshResProcesses(true); });
+    on("btn-res-ports", "click", refreshResPorts);
+    on("res-proc-sort", "change", () => {
+      renderResProcesses(state.resProcessesRaw || []);
+    });
+    on("res-proc-asc", "change", () => {
+      renderResProcesses(state.resProcessesRaw || []);
+    });
+    on("btn-proc-close", "click", closeProcManage);
+    on("btn-proc-kill", "click", () => { procKill(false); });
+    on("btn-proc-kill9", "click", () => { procKill(true); });
+    on("btn-um-toggle-sudo", "click", async () => {
+      const hostId = document.getElementById("um-host").value;
+      const username = state.umSelectedUser;
+      if (!hostId || !username) return setText("um-manage-status", "请先选择用户");
+      const groups = (state.umSelectedGroups && state.umSelectedGroups.supplementary_groups) ? state.umSelectedGroups.supplementary_groups : [];
+      const hasSudo = groups.includes("sudo");
+      setText("um-manage-status", (hasSudo ? "取消 sudo 中..." : "赋予 sudo 中..."));
+      try {
+        await api("/api/remote-users/sudo?host_id=" + encodeURIComponent(hostId) + "&username=" + encodeURIComponent(username), {
+          method: "POST",
+          body: JSON.stringify({ make_sudo: !hasSudo }),
+        });
+        setText("um-manage-status", hasSudo ? "已取消 sudo" : "已赋予 sudo");
+        await reloadUmGroups();
+      } catch (e) {
+        setText("um-manage-status", "操作失败：" + e.message);
+      }
+    });
+
+    initMenu();
+    try {
+      const el = document.getElementById("js-status");
+      if (el) {
+        el.textContent = "JS: OK";
+        el.style.color = "#dcfce7";
+        el.style.borderColor = "#22c55e";
+      }
+    } catch {}
+    // 恢复登录态（刷新页面无需重新登录），未登录则跳到登录页
+    loadTokens();
+    const uname = loadUsername();
+    if (!state.accessToken) {
+      window.location.href = "/ui-login";
+    } else {
+      if (uname) {
+        document.getElementById("header-user").textContent = "当前用户：" + uname;
+      } else {
+        document.getElementById("header-user").textContent = "已登录";
+      }
+      // 页面加载时：概览 + 备份列表 + 触发器
+      refreshOverview();
+      dbLoadBackups();
+      loadTriggers(false);
+      // 主机页
+      loadHosts();
+      fillHostSelects();
+      // 监控大屏（首次加载）
+      refreshMonitorScreen();
+      loadSmtpSetting();
+      loadLogSources();
+    }
+
+    // 监控看板：每分钟自动刷新
+    setInterval(() => {
+      refreshHostDashboard();
+    }, 60 * 1000);
+  </script>
+</body>
+</html>
+    
