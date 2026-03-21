@@ -1,0 +1,12 @@
+streamlit>=1.37.0
+langchain>=0.3.0
+langgraph>=0.2.0
+langchain-core>=0.3.0
+langchain-community>=0.3.0
+langchain-chroma>=0.1.0
+langchain-text-splitters>=0.3.0
+chromadb>=0.5.0
+dashscope>=1.20.0
+pypdf>=4.3.0
+PyYAML>=6.0.0
+requests>=2.32.0

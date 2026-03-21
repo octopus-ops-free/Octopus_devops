@@ -1,0 +1,16 @@
+services:
+  octopus-ai-agent:
+    build:
+      context: ./AiOps_Agent
+      dockerfile: Dockerfile
+    container_name: octopus-ai-agent
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    volumes:
+      - ./AiOps_Agent/chroma_db:/app/chroma_db
+      - ./AiOps_Agent/logs:/app/logs
+      - ./AiOps_Agent/data:/app/data
+      - ./AiOps_Agent/md5.text:/app/md5.text
+    restart: unless-stopped

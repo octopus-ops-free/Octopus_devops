@@ -1,8 +1,7 @@
-version: "3.9"
-
 services:
   octopus:
     build: .
+    image: octopus-ops:latest
     container_name: octopus-ops
     restart: unless-stopped
     env_file:
