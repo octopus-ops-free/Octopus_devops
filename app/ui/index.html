@@ -601,18 +601,17 @@
       </div>
 
       <div class="card" style="margin-top:10px;">
-        <h2>AI 助理 <span class="sub">预留接口（后续接入你的 agent）</span></h2>
+        <h2>AI 助理 <span class="sub">跳转到运维工程师智能助手页面</span></h2>
         <div class="row" style="margin-bottom:8px;">
           <div style="flex:1 1 auto;">
-            <label>问题</label>
-            <input id="ai-prompt" placeholder="例如：分析最近 1 小时 CPU 升高原因，并给排查步骤" />
+            <label>说明</label>
+            <div class="status">请先启动智能体服务，然后点击右侧按钮打开页面。</div>
           </div>
           <div style="align-self:flex-end; display:flex; gap:8px;">
-            <button class="secondary" id="btn-ai-send">发送</button>
+            <button class="secondary" id="btn-ai-open">打开智能体</button>
           </div>
           <div class="status" id="ai-status" style="align-self:flex-end;"></div>
         </div>
-        <pre id="ai-reply">// AI 助理占位：后续接入 agent 后这里会显示答复</pre>
       </div>
       </div>
     </section>
@@ -1415,17 +1414,10 @@
       document.getElementById("log-content").textContent = _logRaw || "";
     }
 
-    async function aiSend() {
-      const prompt = document.getElementById("ai-prompt").value.trim();
-      if (!prompt) return setText("ai-status", "请先输入问题");
-      setText("ai-status", "发送中...");
-      try {
-        const data = await api("/api/ai/chat", { method: "POST", body: JSON.stringify({ prompt, host: document.getElementById("mon-host").value }) });
-        setText("ai-status", "已返回");
-        document.getElementById("ai-reply").textContent = (data && data.reply) ? data.reply : prettyJson(data);
-      } catch (e) {
-        setText("ai-status", "失败：" + e.message);
-      }
+    function openAiAssistant() {
+      const aiAgentUrl = "http://127.0.0.1:8501";
+      setText("ai-status", "正在打开智能体页面...");
+      window.open(aiAgentUrl, "_blank");
     }
 
     function levelBadge(level) {
@@ -2306,7 +2298,7 @@
     on("btn-log-files", "click", listLogFiles);
     on("btn-log-apply", "click", applyLogKeyword);
     on("btn-log-clear", "click", clearLogKeyword);
-    on("btn-ai-send", "click", aiSend);
+    on("btn-ai-open", "click", openAiAssistant);
     on("btn-refresh-alerts", "click", refreshAlerts);
     on("btn-refresh-alerts-history", "click", refreshAlertsHistory);
     on("btn-db-health", "click", dbHealth);
