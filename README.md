@@ -1,6 +1,6 @@
-# Octopus Ops MVP v1.0 (FastAPI)
+# Octopus Ops MVP v1.1.0 (FastAPI + Agent)
 
-轻量级自动化运维平台 MVP：本地运行、低资源占用、易扩展，适合个人/小团队在一台机器上集中管理多台 Linux 主机（监控 + 告警 + 用户/进程/日志运维）。
+轻量级自动化运维平台 MVP：本地运行、低资源占用、易扩展，适合个人/小团队在一台机器上集中管理多台 Linux 主机（监控 + 告警 + 用户/进程/日志运维 + 智能助手跳转）。
 
 ---
 
@@ -85,7 +85,7 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 ---
 
-## 四、功能概览（MVP v1.0）
+## 四、功能概览（MVP v1.1.0）
 
 - **认证与权限**
   - 登录 / 登出 / JWT 刷新（access + refresh）
@@ -109,10 +109,101 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
   - 操作日志：平台操作写入 `operation_logs` 表
 - **前端 UI**
   - 纯 HTML + 原生 JS 单页应用，具备侧边菜单、监控大屏、弹窗管理等交互
+  - 新增 AI 助手入口按钮，可一键跳转到外部智能体页面（默认 `http://127.0.0.1:8501`）
 
 ---
 
-## 五、Docker 部署（详细说明）
+## 五、v1.1.0 新增：智能体接入说明（最新目录）
+
+### 1. 交互方式
+
+v1.1.0 采用“前端跳转”方式接入智能体，智能体代码现已位于仓库内独立目录：
+
+- `p7_AiOps智能体/`
+
+- 在 Octopus Web 控制台点击 **“打开智能体”**；
+- 浏览器新开页面跳转到智能体服务地址（默认 `http://127.0.0.1:8501`）；
+- 智能体页面由独立 Streamlit 服务承载，与主后端进程隔离部署。
+
+### 2. 智能体链接添加位置（你问的重点）
+
+- 文件：`app/ui/index.html`
+- 位置：**主机监控页中的「AI 助理」卡片区域**（原“占位接口”区域）
+- 按钮：`btn-ai-open`
+- 跳转函数：`openAiAssistant()`
+- 可修改地址变量：`aiAgentUrl`
+
+示例（在 `openAiAssistant()` 中）：
+
+```js
+const aiAgentUrl = "http://127.0.0.1:8501";
+window.open(aiAgentUrl, "_blank");
+```
+
+> 如果你的智能体部署在其他主机，只需改 `aiAgentUrl` 为实际地址（例如 `http://<agent-host>:8501`）。
+
+---
+
+## 六、智能体独立 Docker 部署（AiOps_Agent）
+
+为保证主项目稳定性，智能体采用**独立镜像、独立容器**运行，不与 `octopus-ops` 容器混跑。
+
+### 1. 准备环境变量
+
+智能体模型默认使用 DashScope，请先在当前 shell 设置：
+
+```bash
+export DASHSCOPE_API_KEY=你的Key
+```
+
+Windows PowerShell：
+
+```powershell
+$env:DASHSCOPE_API_KEY="你的Key"
+```
+
+### 2. 构建并运行智能体镜像（单独运行）
+
+```bash
+docker build -t octopus-ai-agent ./AiOps_Agent
+docker run -d \
+  --name octopus-ai-agent \
+  -p 8501:8501 \
+  -e DASHSCOPE_API_KEY=$DASHSCOPE_API_KEY \
+  -v $(pwd)/AiOps_Agent/chroma_db:/app/chroma_db \
+  -v $(pwd)/AiOps_Agent/logs:/app/logs \
+  -v $(pwd)/AiOps_Agent/data:/app/data \
+  -v $(pwd)/AiOps_Agent/md5.text:/app/md5.text \
+  octopus-ai-agent
+```
+
+启动后访问：
+
+- 智能体页面：`http://<服务器IP>:8501`
+
+### 3. 使用独立 compose 文件运行（推荐）
+
+仓库已提供 `docker-compose.agent.yml`：
+
+```bash
+docker compose -f docker-compose.agent.yml up -d --build
+```
+
+查看日志：
+
+```bash
+docker logs -f octopus-ai-agent
+```
+
+### 4. 主项目与智能体联动
+
+1. 先确保智能体容器可访问（`8501` 端口）；
+2. 在 `app/ui/index.html` 的 `openAiAssistant()` 中设置 `aiAgentUrl` 为可访问地址；
+3. 打开 Octopus 控制台，在“主机监控”中的 AI 助理卡片点击“打开智能体”。
+
+---
+
+## 七、Docker 部署（主平台）
 
 ### 1. 准备配置
 
@@ -164,7 +255,7 @@ docker compose up -d
 
 ---
 
-## 六、使用指引（Web 控制台）
+## 八、使用指引（Web 控制台）
 
 ### 1. 登录
 
@@ -222,9 +313,16 @@ docker compose up -d
   3. 选择日志源，列出文件，双击文件名即可 tail 查看；
   4. 右侧“关键字匹配”输入关键字后应用，可在前端高亮匹配内容。
 
+### 7. AI 助理跳转
+
+- 进入 **主机监控** 页面；
+- 在 **AI 助理** 卡片点击“打开智能体”；
+- 浏览器会新开标签页进入智能体服务；
+- 若无法打开，请先确认智能体服务已启动（例如 `streamlit run app.py`）。
+
 ---
 
-## 七、目录结构
+## 九、目录结构
 
 ```
 app/
@@ -238,6 +336,8 @@ app/
   main.py     # FastAPI 入口
 data/         # SQLite 文件（运行时创建，可挂载卷）
 tools/        # 辅助脚本（如 refactor_ui.py）
+AiOps_Agent/ # 运维智能助手（独立 Streamlit + RAG + 工具集）
+docker-compose.agent.yml # 智能体独立容器编排文件
 ```
 
 ## 资源占用建议
