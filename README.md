@@ -4,7 +4,28 @@
 
 ---
 
-## 一、快速上手（推荐路径）
+## 零、一键部署（推荐）
+
+拉取代码后，执行一键脚本即可完成环境检查、配置生成与启动：
+
+```bash
+git clone https://github.com/your-name/Octopus_devops.git
+cd Octopus_devops
+chmod +x start.sh
+./start.sh
+```
+
+脚本会自动：检查 Docker/Docker Compose、生成 `.env`（含随机 JWT_SECRET）、创建必要目录；可选是否部署 AI 智能体，若部署则提示输入阿里百炼 API Key 并写入环境变量；最后构建并启动主项目与（可选）Agent。
+
+> **若报错** `cannot execute: required file not found` 或 `set: Illegal option`：多为 Windows 换行符（CRLF）导致，请在项目目录执行：
+> ```bash
+> sed -i 's/\r$//' start.sh
+> ```
+> 然后重新运行 `./start.sh` 或 `bash start.sh`。
+
+---
+
+## 一、快速上手（手动部署）
 
 ### 1. 本地或服务器安装 Docker
 
@@ -30,10 +51,10 @@ cp .env.example .env
 
 按需编辑 `.env`（至少推荐修改 `JWT_SECRET` 为随机长字符串，生产环境建议修改管理员密码）。
 
-### 4. 一条命令启动（Docker）
+### 4. 构建并启动（Docker）
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 启动完成后：
@@ -201,6 +222,8 @@ docker logs -f octopus-ai-agent
 2. 在 `app/ui/index.html` 的 `openAiAssistant()` 中设置 `aiAgentUrl` 为可访问地址；
 3. 打开 Octopus 控制台，在“主机监控”中的 AI 助理卡片点击“打开智能体”。
 
+> **如需使用智能体功能**：请在 `app/ui/index.html` 第 1418 行将 `aiAgentUrl` 中的地址修改为您的服务器 IP（例如 `http://YOUR_SERVER_IP:8501`），否则点击「打开智能体」将无法正确跳转。
+
 ---
 
 ## 七、Docker 部署（主平台）
@@ -322,7 +345,72 @@ docker compose up -d
 
 ---
 
-## 九、目录结构
+## 九、GitLab CI/CD 自动部署
+
+推送代码到 `main` 或 `master` 分支后，流水线自动构建并部署到服务器。
+
+### 1. 前置条件
+
+- 服务器已安装 Docker、Docker Compose
+- 服务器上已克隆项目（你已 clone 的空仓库）
+- 服务器 SSH 可登录（你已配置公钥到 GitLab，用于 pull；下面需再配一套用于 CI 登录服务器）
+
+### 2. 配置 GitLab CI/CD 变量
+
+在 GitLab 项目：**Settings → CI/CD → Variables** 中添加：
+
+| 变量名 | 说明 | 示例 | 是否 Masked |
+|--------|------|------|-------------|
+| `SSH_PRIVATE_KEY` | 用于 SSH 登录**部署服务器**的私钥（与服务器 `~/.ssh/authorized_keys` 中的公钥配对） | `-----BEGIN OPENSSH PRIVATE KEY-----...` | ✅ |
+| `DEPLOY_SERVER` | 部署目标，格式 `用户@IP 或 域名` | `ubuntu@1.2.3.4` | - |
+| `DEPLOY_PATH` | 服务器上项目目录 | `/home/ubuntu/Octopus_devops` | - |
+
+### 3. 生成并配置 SSH 密钥（供 CI 登录服务器）
+
+在**本机**或任意环境执行：
+
+```bash
+# 生成密钥对（仅用于 CI 部署，可与 GitLab 的 deploy key 分开）
+ssh-keygen -t ed25519 -C "gitlab-ci-deploy" -f deploy_key -N ""
+
+# 将公钥添加到部署服务器的 authorized_keys
+ssh-copy-id -i deploy_key.pub ubuntu@你的服务器IP
+
+# 将私钥内容复制到 GitLab 变量 SSH_PRIVATE_KEY
+cat deploy_key
+# 复制全部输出（含 BEGIN/END 行）粘贴到 GitLab Variables
+```
+
+### 4. 首次部署前在服务器上准备
+
+```bash
+# SSH 登录服务器
+ssh ubuntu@你的服务器IP
+
+cd /home/ubuntu/Octopus_devops   # 或你的 DEPLOY_PATH
+
+# 从 .env.example 创建 .env，并编辑填入必要配置（JWT_SECRET、DASHSCOPE_API_KEY 等）
+cp .env.example .env
+nano .env
+
+# 确保目录存在
+mkdir -p data AiOps_Agent/chroma_db AiOps_Agent/logs
+```
+
+### 5. 流水线行为
+
+- **触发**：推送到 `main` 或 `master` 分支
+- **执行**：SSH 到 `DEPLOY_SERVER`，在 `DEPLOY_PATH` 执行 `git fetch` + `git reset --hard`，然后 `docker compose up -d --build`
+- **Agent**：若 `.env` 中存在有效的 `DASHSCOPE_API_KEY`（以 `sk-` 开头），则同时构建并启动 Agent
+
+### 6. 使用共享 Runner 或自托管 Runner
+
+- **GitLab.com 共享 Runner**：可直接使用，流水线中的 `image: alpine` 会在 Runner 环境中运行
+- **自托管 Runner**：在服务器安装 [GitLab Runner](https://docs.gitlab.com/runner/install/)，注册到项目；若 Runner 与部署在同一台机，可改用 `shell` executor 做本地部署，无需 SSH（可自行调整 `.gitlab-ci.yml`）
+
+---
+
+## 十、目录结构
 
 ```
 app/
