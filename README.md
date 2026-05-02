@@ -60,7 +60,7 @@ docker compose up -d --build
 启动完成后：
 
 - Swagger 文档：`http://<服务器IP>:8001/docs`
-- Web 控制台登录页：`http://<服务器IP>:8001/ui-login`
+- Web 控制台登录页：`http://<服务器IP>:8001/ui-login`（登录后进入 **`/ui`** 控制台；镜像默认 **`UI_MODE=react`** 时使用 React 前端）
 
 首次登录使用默认账号（可在 `.env` 中修改）：
 
@@ -89,6 +89,36 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 - Swagger 文档：`http://127.0.0.1:8000/docs`  
 - Web 控制台：`http://127.0.0.1:8000/ui-login`
+
+若需在本地 uvicorn 下启用 React 界面，先在仓库根目录执行 `cd frontend && npm ci && npm run build`，再启动 API；`app/main.py` 在检测到 `frontend/dist` 时会挂载静态资源并可在 `UI_MODE=react` 时从该目录提供 `/ui`。
+
+---
+
+## 二点五、前端（React）与 `UI_MODE`
+
+仓库包含 **`frontend/`**（Vite + TypeScript + React）。与旧版纯 `app/ui/*.html` 并存，由环境变量控制：
+
+| 模式 | 说明 |
+|------|------|
+| **`react`（Docker 镜像默认）** | 存在 `frontend/dist` 时，`/ui`、`/ui-login` 返回 React 产物；静态资源前缀 **`/ui-assets`**。 |
+| **`legacy`** | 未构建或显式设置时使用 `app/ui/` 下传统 HTML 页。 |
+
+**统一界面风格**：侧栏与业务页使用 `frontend/src/index.css` 中的 **shell 灰黑主题** CSS 变量（`--shell-bg`、`--shell-surface*` 等），与概览大屏组件样式对齐。
+
+**Web SSH 终端**：
+
+- 全屏独立入口：**`/terminal`** → `app/ui/terminal.html`（含顶栏与「返回控制台」）。
+- 嵌入 React 壳：**`/ui/terminal`** → iframe 加载 **`/terminal?embed=1`**，隐藏重复顶栏并与主壳背景一致。
+
+本地只改前端时：
+
+```powershell
+cd frontend
+npm ci
+npm run build
+```
+
+Docker 场景下镜像已在构建阶段执行 `npm run build`，一般无需把 `frontend/dist` 提交到 Git。
 
 ---
 
@@ -129,8 +159,8 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
   - 登录历史：基于远端 `last -i`，用于排查异常登录 IP
   - 操作日志：平台操作写入 `operation_logs` 表
 - **前端 UI**
-  - 纯 HTML + 原生 JS 单页应用，具备侧边菜单、监控大屏、弹窗管理等交互
-  - 新增 AI 助手入口按钮，可一键跳转到外部智能体页面（默认 `http://127.0.0.1:8501`）
+  - **React 控制台（推荐）**：侧栏导航、总览大屏、各运维子模块；AI 助手页可配置并打开外部智能体（默认 `http://127.0.0.1:8501`）。
+  - **Legacy**：`app/ui/*.html` 仍可作回退；部分能力（如独立 Web 终端页）继续由该目录提供。
 
 ---
 
@@ -414,14 +444,15 @@ mkdir -p data AiOps_Agent/chroma_db AiOps_Agent/logs
 
 ```
 app/
-  api/        # 路由（认证、主机管理、监控、告警、日志采集等）
+  api/        # 路由（认证、主机管理、监控、告警、日志采集、Web 终端 WS 等）
   core/       # 配置、日志、通用依赖
   db/         # 数据库、模型、会话
   security/   # JWT、密码
   services/   # 业务服务（监控/告警/备份/远程用户/资源等）
   static/     # 静态资源（如 ssh 检测脚本）
-  ui/         # 纯 HTML+JS 单页前端（/ui 与 /ui-login）
-  main.py     # FastAPI 入口
+  ui/         # Legacy HTML+JS（/terminal 等）；/ui 在 UI_MODE=react 时由 frontend/dist 接管
+  main.py     # FastAPI 入口（UI_MODE、静态挂载）
+frontend/     # React + Vite 控制台源码（生产构建写入 dist，多由镜像构建）
 data/         # SQLite 文件（运行时创建，可挂载卷）
 tools/        # 辅助脚本（如 refactor_ui.py）
 AiOps_Agent/ # 运维智能助手（独立 Streamlit + RAG + 工具集）
@@ -432,4 +463,33 @@ docker-compose.agent.yml # 智能体独立容器编排文件
 
 - SQLite + 单进程 uvicorn（默认 1 worker）
 - 监控采集按需触发（手动/定时可扩展），避免高频后台循环
+
+---
+
+## 十一、本地变更摘要与推送 GitHub 前核对
+
+以下为当前开发批次在功能与文档层面的**摘要**（便于写 commit / PR 描述；以你本地 `git status` 为准做最终核对）。
+
+| 方向 | 内容摘要 |
+|------|-----------|
+| **前端** | 新增并完善 `frontend/`：Shell 布局、总览大屏与各业务路由；统一灰黑主题；`/ui/terminal` 内嵌 `terminal.html`（`embed=1`）。 |
+| **Legacy UI** | `app/ui/terminal.html`：Web SSH 终端样式与主站 shell 对齐；支持嵌入模式。 |
+| **后端** | `app/main.py`：`UI_MODE`、`/ui-assets` 挂载、`/terminal` 路由等；API/模型/迁移等随功能迭代（以 diff 为准）。 |
+| **容器** | `Dockerfile` 多阶段构建前端，`UI_MODE=react`；`docker-compose.yml` 等编排同步。 |
+| **脚本** | `start.sh` 等启动脚本调整。 |
+
+**推送前建议**
+
+1. **勿提交密钥与数据**：`.env`、`data/*.db`、私钥文件；确认 `.gitignore` 已覆盖。
+2. **勿提交依赖与构建产物**：`node_modules/`、`frontend/dist/`（已由 `.gitignore` 忽略）；镜像内会重新 `npm ci && npm run build`。
+3. **Python 缓存**：若历史上曾把 `__pycache__` 或 `*.pyc` 加入版本库，可从索引移除（保留本地文件）后再提交，例如：  
+   `git rm -r --cached app/**/__pycache__ 2>$null; git rm -r --cached app/api/__pycache__`（按实际路径调整）。
+4. **大体积未跟踪目录**（如本机 `.claude/` 技能包、备份目录）：默认不要 `git add`，除非你有意维护子树。
+5. **推送**：`git add` 选定路径 → `git commit` → `git push origin <分支名>`。
+
+---
+
+## 十二、GitHub（替代 GitLab）推送说明
+
+若远程为 **GitHub** 而非文档中的 GitLab：将 `origin` 指到 GitHub 仓库后同样使用 `git push`；CI/CD 需改用 GitHub Actions（本仓库若未含 workflow，可自行添加或仅用手动部署）。原 **第九节 GitLab CI/CD** 仍可作为「服务器上 docker compose 拉取更新」的参考流程。
 

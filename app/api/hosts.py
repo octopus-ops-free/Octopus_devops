@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import cast
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import HostCreate, HostOut, HostUpdate
+from app.api.schemas import CronSummaryOut, HostCreate, HostOut, HostUpdate
 from app.core.deps import get_current_user, require_admin
 from app.db.models import Host, User
 from app.db.session import get_db
+from app.services.cron_summary import Window as CronWindow, fetch_cron_summary_for_host
 from app.services.hosts import probe_host_info
 from app.services.monitoring import save_remote_linux_metrics
 
@@ -65,6 +68,27 @@ async def add_host(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"主机添加失败（SSH 校验/采集失败）：{str(e)[:300]}")
 
     return HostOut.model_validate(host, from_attributes=True)
+
+
+@router.get("/{host_id}/cron/summary", response_model=CronSummaryOut)
+async def host_cron_summary(
+    host_id: int,
+    window: str = Query(default="24h", pattern="^(24h|7d|30d)$"),
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> CronSummaryOut:
+    if window not in ("24h", "7d", "30d"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid window")
+    host = await db.get(Host, host_id)
+    if host is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="主机不存在")
+    if (not user.is_admin) and (host.owner_id != user.id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权查看该主机")
+    try:
+        raw = await fetch_cron_summary_for_host(host, cast(CronWindow, window))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(e)[:400]) from e
+    return CronSummaryOut(**raw)
 
 
 @router.delete("/{host_id}", status_code=status.HTTP_204_NO_CONTENT)

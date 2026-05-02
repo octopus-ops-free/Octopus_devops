@@ -1,8 +1,23 @@
-FROM python:3.11-slim
+ARG NODE_BASE_IMAGE=mirror.gcr.io/library/node:20-bookworm-slim
+ARG PYTHON_BASE_IMAGE=mirror.gcr.io/library/python:3.11-slim
+
+FROM ${NODE_BASE_IMAGE} AS frontend-builder
+WORKDIR /frontend
+COPY frontend/package*.json ./
+RUN npm ci --include=optional --no-fund --no-audit
+COPY frontend ./
+RUN npm run build
+
+FROM ${PYTHON_BASE_IMAGE}
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
+
+ENV ENV=prod \
+    LOG_LEVEL=INFO \
+    SQLITE_PATH=./data/octopus.db \
+    UI_MODE=react
 
 WORKDIR /app
 
@@ -20,17 +35,14 @@ RUN apt-get update && \
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-COPY . .
+COPY app ./app
+COPY --from=frontend-builder /frontend/dist ./frontend/dist
+# Keep legacy HTML fallbacks available in case the frontend is not built.
+COPY app/ui ./app/ui
 
 # SQLite 数据目录（可挂载到宿主机）
 RUN mkdir -p /app/data
 
 EXPOSE 8001
 
-# 生产环境推荐在 .env 中覆盖这些配置
-ENV ENV=prod \
-    LOG_LEVEL=INFO \
-    SQLITE_PATH=./data/octopus.db
-
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
-

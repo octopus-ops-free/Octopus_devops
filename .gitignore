@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# 虚拟环境
+.venv/
+env/
+venv/
+
+# 本地配置（不要提交真实密钥）
+.env
+
+# SQLite 数据及备份（只保留空目录）
+data/*
+!data/.gitkeep
+
+# 编辑器/工具
+.vscode/
+.idea/
+.cursor/
+
+# 日志
+*.log
+logs/
+
+# 智能体向量库（体积较大，勿提交）
+chroma_db/
+
+# 前端依赖与构建产物（Dockerfile 多阶段构建生成 dist，无需入库）
+node_modules/
+frontend/node_modules/
+frontend/dist/
+

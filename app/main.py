@@ -2,15 +2,17 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api import ai, alerts, auth, db as db_api, hosts, logs, monitoring, notifications, remote_users, resources, security, users
+from app.api import ai, alerts, auth, db as db_api, hosts, logs, monitoring, notifications, remote_users, resources, security, terminal, users
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.oplog import write_operation_log
@@ -49,6 +51,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
 
+# UI serving mode:
+# - legacy: serve `app/ui/*.html` via FileResponse (default)
+# - react:  serve `frontend/dist/index.html` + assets (when built)
+UI_MODE = os.getenv("UI_MODE", "legacy").lower()
+FRONTEND_DIST = Path("frontend/dist")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -59,6 +67,13 @@ app.add_middleware(
 
 # 提供静态工具脚本下载（例如 SSH 自检脚本）
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+# When React UI has been built, serve its assets under a stable prefix.
+# This keeps FastAPI routing simple and allows an easy rollback to legacy UI.
+if FRONTEND_DIST.exists():
+    # Mount dist root so both `/ui-assets/assets/*` and `/ui-assets/favicon.svg`
+    # resolve correctly against Vite production output.
+    app.mount("/ui-assets", StaticFiles(directory=str(FRONTEND_DIST)), name="ui-assets")
 
 
 @app.middleware("http")
@@ -103,16 +118,35 @@ app.include_router(notifications.router)
 app.include_router(security.router)
 app.include_router(logs.router)
 app.include_router(ai.router)
+app.include_router(terminal.router)
+
+
+def _no_store_html() -> dict[str, str]:
+    """避免浏览器长期缓存入口 HTML，否则 F5 仍可能用旧的 script 路径。"""
+    return {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache"}
 
 
 @app.get("/ui", response_class=HTMLResponse, include_in_schema=False)
 async def ui_page() -> FileResponse:
-    return FileResponse("app/ui/index.html")
+    if UI_MODE == "react" and FRONTEND_DIST.exists():
+        index_html = FRONTEND_DIST / "index.html"
+        if index_html.exists():
+            return FileResponse(str(index_html), headers=_no_store_html())
+    return FileResponse("app/ui/index.html", headers=_no_store_html())
+
+
+@app.get("/terminal", response_class=HTMLResponse, include_in_schema=False)
+async def terminal_page() -> FileResponse:
+    return FileResponse("app/ui/terminal.html")
 
 
 @app.get("/ui-login", response_class=HTMLResponse, include_in_schema=False)
 async def ui_login_page() -> FileResponse:
-    return FileResponse("app/ui/login.html")
+    if UI_MODE == "react" and FRONTEND_DIST.exists():
+        index_html = FRONTEND_DIST / "index.html"
+        if index_html.exists():
+            return FileResponse(str(index_html), headers=_no_store_html())
+    return FileResponse("app/ui/login.html", headers=_no_store_html())
 
 
 
