@@ -59,7 +59,7 @@ function buildDonutOption(snapshot: OverviewSnapshot): EChartsOption {
     tooltip: {
       trigger: 'item',
       backgroundColor: 'rgba(10, 17, 34, 0.95)',
-      borderColor: 'rgba(71, 85, 105, 0.45)',
+      borderColor: 'rgba(255, 255, 255, 0.08)',
       textStyle: { color: '#dbeafe' },
     },
     legend: {
@@ -90,7 +90,7 @@ function buildBarOption(snapshot: OverviewSnapshot): EChartsOption {
       trigger: 'axis',
       axisPointer: { type: 'shadow' },
       backgroundColor: 'rgba(10, 17, 34, 0.95)',
-      borderColor: 'rgba(71, 85, 105, 0.45)',
+      borderColor: 'rgba(255, 255, 255, 0.08)',
       textStyle: { color: '#dbeafe' },
     },
     grid: { left: 10, right: 10, top: 20, bottom: 8, containLabel: true },
@@ -153,21 +153,21 @@ const chartContainerStyle: CSSProperties = {
 const switchWrapStyle: CSSProperties = {
   display: 'inline-flex',
   borderRadius: 8,
-  border: '1px solid rgba(71, 85, 105, 0.48)',
+  border: '1px solid var(--shell-border-medium)',
   overflow: 'hidden',
 }
 
 const switchButtonStyle: CSSProperties = {
   border: 0,
   padding: '4px 10px',
-  background: 'rgba(14, 24, 45, 0.85)',
-  color: '#9fb4d4',
+  background: 'var(--shell-surface-muted)',
+  color: 'var(--text-soft)',
   cursor: 'pointer',
   fontSize: 12,
 }
 
 const activeButtonStyle: CSSProperties = {
   ...switchButtonStyle,
-  background: 'rgba(96, 165, 250, 0.22)',
-  color: '#dbeafe',
+  background: 'var(--shell-nav-active-bg)',
+  color: 'var(--heading)',
 }

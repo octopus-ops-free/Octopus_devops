@@ -164,6 +164,26 @@ class AlertEventOut(BaseModel):
     created_at: dt.datetime
 
 
+class AlertTrendBucketOut(BaseModel):
+    start: str = Field(description="ISO8601 UTC")
+    counts: dict[str, int] = Field(default_factory=dict)
+
+
+class AlertTrendOut(BaseModel):
+    window: str
+    buckets: list[AlertTrendBucketOut]
+
+
+class CronSummaryOut(BaseModel):
+    configured_lines: int
+    success: int
+    failure: int
+    running: int
+    skipped: int
+    degraded: bool
+    detail: Optional[str] = Field(default=None, max_length=512)
+
+
 class AlertTriggerIn(BaseModel):
     host: str = Field(default="local", min_length=1, max_length=128)
     metric: str = Field(pattern="^(cpu|mem|disk)$")

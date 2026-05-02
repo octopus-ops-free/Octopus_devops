@@ -42,12 +42,12 @@ function buildAlertTrendOption(buckets: AlertTrendResponse['buckets']): EChartsO
   }
 
   return {
-    backgroundColor: '#0b1324',
+    backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(10, 17, 34, 0.95)',
-      borderColor: 'rgba(71, 85, 105, 0.45)',
-      textStyle: { color: '#dbeafe' },
+      backgroundColor: 'rgba(15, 23, 42, 0.96)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      textStyle: { color: '#f8fafc' },
     },
     legend: {
       top: 0,
@@ -67,7 +67,7 @@ function buildAlertTrendOption(buckets: AlertTrendResponse['buckets']): EChartsO
       type: 'value',
       axisLine: { show: false },
       axisLabel: { color: '#94a9c8' },
-      splitLine: { lineStyle: { color: 'rgba(56, 76, 103, 0.3)' } },
+      splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.06)' } },
     },
     series: seriesNames.map((name) => ({
       name,
@@ -76,6 +76,10 @@ function buildAlertTrendOption(buckets: AlertTrendResponse['buckets']): EChartsO
       showSymbol: false,
       lineStyle: { width: 2, color: colors[name] },
       itemStyle: { color: colors[name] },
+      areaStyle: {
+        opacity: 0.22,
+        color: colors[name],
+      },
       data: buckets.map((b) => Number(b.counts[name] ?? 0)),
     })),
   }

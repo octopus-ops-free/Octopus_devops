@@ -48,8 +48,8 @@ export function Layout() {
         <div style={brandWrap}>
           <div style={brandLogo} />
           <div>
-            <div style={brandTitle}>Octopus Ops</div>
-            <div style={brandSub}>Control Center</div>
+            <div style={brandTitle}>自动化运维平台</div>
+            <div style={brandSub}>Octopus Ops · Control Center</div>
           </div>
         </div>
 
@@ -78,7 +78,7 @@ export function Layout() {
         <header style={topbar}>
           <div style={topbarTitle}>{getTopbarTitle(pathname)}</div>
           <div style={topbarRight}>
-            <input aria-label="全局搜索" placeholder="搜索流程、脚本、任务..." style={searchInput} />
+            <input aria-label="全局搜索" placeholder="搜索资源、脚本、任务..." style={searchInput} />
             <span style={badge}>3</span>
             <span style={avatar}>admin</span>
           </div>
@@ -87,16 +87,20 @@ export function Layout() {
           <Outlet />
         </div>
         <footer style={footerBar} aria-label="快速入口">
-          {layoutNavItems.map((item) => (
-            <NavLink
-              key={`footer-${item.to}`}
-              to={item.to}
-              end={item.to === '/ui'}
-              style={({ isActive }) => (isActive ? footerNavActive : footerNavLink)}
-            >
-              {item.label}
-            </NavLink>
-          ))}
+          <span style={footerQuickLabel}>快速入口</span>
+          <div style={footerQuickLinks}>
+            {layoutNavItems.map((item) => (
+              <NavLink
+                key={`footer-${item.to}`}
+                to={item.to}
+                end={item.to === '/ui'}
+                style={({ isActive }) => (isActive ? footerNavActive : footerNavLink)}
+              >
+                <img src={item.iconSrc} alt="" width={16} height={16} style={footerNavIcon} />
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </div>
         </footer>
       </main>
     </div>
@@ -107,12 +111,13 @@ const shell: CSSProperties = {
   display: 'grid',
   gridTemplateColumns: '260px 1fr',
   minHeight: '100vh',
+  background: 'var(--shell-bg)',
 }
 
 const sidebar: CSSProperties = {
   padding: 18,
-  borderRight: '1px solid rgba(148, 163, 184, 0.18)',
-  background: '#0b1220',
+  borderRight: '1px solid var(--shell-border)',
+  background: 'var(--shell-sidebar-bg)',
   backdropFilter: 'blur(8px)',
 }
 
@@ -127,19 +132,20 @@ const brandLogo: CSSProperties = {
   width: 34,
   height: 34,
   borderRadius: 10,
-  background: '#2563eb',
-  boxShadow: '0 0 18px rgba(37,99,235,0.25)',
+  background: 'var(--shell-brand-mark)',
+  boxShadow: 'inset 0 1px 0 var(--shell-inset)',
+  border: '1px solid var(--shell-border-medium)',
 }
 
 const brandTitle: CSSProperties = {
   fontSize: 15,
   fontWeight: 800,
-  color: '#eff4ff',
+  color: 'var(--heading)',
 }
 
 const brandSub: CSSProperties = {
   fontSize: 12,
-  color: '#8ea1bc',
+  color: 'var(--text-soft)',
 }
 
 const nav: CSSProperties = {
@@ -154,20 +160,20 @@ const navLink: CSSProperties = {
   alignItems: 'center',
   gap: 10,
   textDecoration: 'none',
-  color: '#b7c4d8',
+  color: 'var(--text-soft)',
   padding: '10px 12px',
   borderRadius: 12,
-  border: '1px solid rgba(71, 85, 105, 0.35)',
-  background: 'rgba(15,23,42,0.42)',
+  border: '1px solid var(--shell-border)',
+  background: 'rgba(255,255,255,0.02)',
   transition: 'all 0.2s ease',
 }
 
 const activeNavLink: CSSProperties = {
   ...navLink,
-  color: '#eff4ff',
-  border: '1px solid rgba(59,130,246,0.65)',
-  background: '#12223d',
-  boxShadow: '0 8px 24px rgba(37,99,235,0.14)',
+  color: 'var(--heading)',
+  border: '1px solid var(--shell-nav-active-border)',
+  background: 'var(--shell-nav-active-bg)',
+  boxShadow: 'none',
 }
 
 const iconWrap: CSSProperties = {
@@ -188,8 +194,9 @@ const iconImage: CSSProperties = {
 const main: CSSProperties = {
   padding: 14,
   display: 'grid',
-  gridTemplateRows: '58px 1fr 52px',
-  gap: 10,
+  gridTemplateRows: '58px 1fr auto',
+  gap: 12,
+  background: 'var(--shell-bg)',
 }
 
 const topbar: CSSProperties = {
@@ -198,14 +205,14 @@ const topbar: CSSProperties = {
   justifyContent: 'space-between',
   padding: '0 14px',
   borderRadius: 12,
-  border: '1px solid rgba(71, 85, 105, 0.45)',
-  background: '#0d1628',
+  border: '1px solid var(--shell-border-medium)',
+  background: 'var(--shell-surface)',
 }
 
 const topbarTitle: CSSProperties = {
   fontSize: 15,
   fontWeight: 700,
-  color: '#dbe7ff',
+  color: 'var(--heading)',
 }
 
 const topbarRight: CSSProperties = {
@@ -220,9 +227,9 @@ const searchInput: CSSProperties = {
   minHeight: 34,
   padding: '7px 10px',
   borderRadius: 8,
-  border: '1px solid rgba(71, 85, 105, 0.6)',
-  background: 'rgba(15, 23, 42, 0.7)',
-  color: '#dbe7ff',
+  border: '1px solid var(--shell-border-medium)',
+  background: 'var(--shell-surface-muted)',
+  color: 'var(--text)',
 }
 
 const badge: CSSProperties = {
@@ -240,9 +247,9 @@ const badge: CSSProperties = {
 const avatar: CSSProperties = {
   padding: '6px 10px',
   borderRadius: 999,
-  border: '1px solid rgba(96, 165, 250, 0.55)',
-  background: 'rgba(15, 23, 42, 0.75)',
-  color: '#dbeafe',
+  border: '1px solid var(--shell-border-medium)',
+  background: 'var(--shell-surface-muted)',
+  color: 'var(--text)',
   fontSize: 12,
 }
 
@@ -250,38 +257,66 @@ const contentWrap: CSSProperties = {
   minHeight: 0,
   overflow: 'auto',
   padding: '2px 4px',
+  display: 'flex',
+  flexDirection: 'column',
 }
 
 const footerBar: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: 8,
-  padding: '0 10px',
-  borderRadius: 12,
-  border: '1px solid rgba(71, 85, 105, 0.45)',
-  background: '#0d1628',
+  gap: 10,
+  padding: '8px 12px',
+  borderRadius: 14,
+  border: '1px solid var(--shell-border-medium)',
+  background: 'var(--shell-surface)',
+  boxShadow: '0 8px 28px rgba(0, 0, 0, 0.2), inset 0 1px 0 var(--shell-inset)',
   overflowX: 'auto',
 }
 
+const footerQuickLabel: CSSProperties = {
+  flexShrink: 0,
+  fontSize: 12,
+  fontWeight: 600,
+  letterSpacing: 0.02,
+  color: '#94a3b8',
+}
+
+const footerQuickLinks: CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  flex: 1,
+  minWidth: 0,
+}
+
+const footerNavIcon: CSSProperties = {
+  objectFit: 'contain',
+  opacity: 0.92,
+  flexShrink: 0,
+}
+
 const footerNavLink: CSSProperties = {
-  minHeight: 34,
+  minHeight: 36,
   padding: '6px 10px',
-  borderRadius: 8,
-  border: '1px solid rgba(71, 85, 105, 0.55)',
-  background: '#13243f',
-  color: '#dbe7ff',
+  borderRadius: 10,
+  border: '1px solid var(--shell-border)',
+  background: 'var(--shell-surface-muted)',
+  color: 'var(--text)',
   fontSize: 12,
   whiteSpace: 'nowrap',
   textDecoration: 'none',
   display: 'inline-flex',
   alignItems: 'center',
+  gap: 6,
+  cursor: 'pointer',
+  transition: 'background 0.2s ease, border-color 0.2s ease, color 0.2s ease',
 }
 
 const footerNavActive: CSSProperties = {
   ...footerNavLink,
-  border: '1px solid rgba(59,130,246,0.65)',
-  background: '#1a3058',
-  color: '#eff4ff',
+  border: '1px solid var(--shell-nav-active-border)',
+  background: 'var(--shell-nav-active-bg)',
+  color: 'var(--heading)',
 }
 
 const sidebarFooter: CSSProperties = {
@@ -291,10 +326,10 @@ const sidebarFooter: CSSProperties = {
   alignItems: 'center',
   gap: 8,
   padding: '0 10px',
-  color: '#9fb1c9',
+  color: 'var(--text-soft)',
   fontSize: 12,
-  border: '1px solid rgba(71, 85, 105, 0.35)',
-  background: 'rgba(15, 23, 42, 0.35)',
+  border: '1px solid var(--shell-border)',
+  background: 'rgba(255,255,255,0.02)',
 }
 
 const dot: CSSProperties = {

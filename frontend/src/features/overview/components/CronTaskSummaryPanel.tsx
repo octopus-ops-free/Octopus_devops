@@ -64,7 +64,12 @@ function buildCronRing(s: CronSummaryResponse | null): EChartsOption {
 
   return {
     backgroundColor: 'transparent',
-    tooltip: { trigger: 'item' },
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: 'rgba(15, 23, 42, 0.96)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      textStyle: { color: '#f8fafc' },
+    },
     series: [
       {
         type: 'pie',

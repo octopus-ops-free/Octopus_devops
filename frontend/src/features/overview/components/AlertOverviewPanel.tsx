@@ -2,7 +2,7 @@ import { useEffect, useMemo, type CSSProperties } from 'react'
 import type { EChartsOption } from 'echarts'
 
 import type { AlertTrendResponse } from '../services/overviewApi'
-import type { OverviewAlertItem, OverviewSnapshot } from '../types'
+import type { OverviewAlertItem, OverviewAlertLevel, OverviewSnapshot } from '../types'
 import { PanelFrame } from './PanelFrame'
 import { useEChart } from './useEChart'
 
@@ -11,10 +11,37 @@ interface AlertOverviewPanelProps {
   trend: AlertTrendResponse | null
 }
 
+const LEVEL_RANK: Record<OverviewAlertLevel, number> = {
+  critical: 0,
+  high: 1,
+  warning: 2,
+  medium: 3,
+  low: 4,
+  info: 5,
+}
+
+function sortAlertsForOverview(items: OverviewAlertItem[]): OverviewAlertItem[] {
+  return [...items].sort((a, b) => {
+    const ra = LEVEL_RANK[a.level] ?? 99
+    const rb = LEVEL_RANK[b.level] ?? 99
+    if (ra !== rb) return ra - rb
+    const ta = new Date(a.createdAt).getTime()
+    const tb = new Date(b.createdAt).getTime()
+    return (Number.isNaN(tb) ? 0 : tb) - (Number.isNaN(ta) ? 0 : ta)
+  })
+}
+
+function formatAlertTime(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso.slice(5, 16)
+  return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
 export function AlertOverviewPanel({ snapshot, trend }: AlertOverviewPanelProps) {
   const { containerRef, setChartOption } = useEChart()
 
   const distribution = useMemo(() => aggregateFromTrend(trend), [trend])
+  const orderedAlerts = useMemo(() => sortAlertsForOverview(snapshot.alerts).slice(0, 12), [snapshot.alerts])
 
   useEffect(() => {
     const option = buildDonut(distribution)
@@ -22,11 +49,11 @@ export function AlertOverviewPanel({ snapshot, trend }: AlertOverviewPanelProps)
   }, [distribution, setChartOption])
 
   return (
-    <PanelFrame title="告警概览">
+    <PanelFrame title="告警概览" subtitle="分布来自趋势聚合 · 列表按等级与时间">
       <div style={grid}>
         <div ref={containerRef} style={donutWrap} />
         <ul style={listStyle} aria-label="告警列表">
-          {snapshot.alerts.slice(0, 12).map((a) => (
+          {orderedAlerts.map((a) => (
             <li key={a.id} style={liStyle}>
               <span style={levelBadge(a.level)}>{a.level}</span>
               <div style={liMain}>
@@ -35,6 +62,9 @@ export function AlertOverviewPanel({ snapshot, trend }: AlertOverviewPanelProps)
                 </span>
                 <span style={liSub}>{a.message}</span>
               </div>
+              <time style={liTime} dateTime={a.createdAt}>
+                {formatAlertTime(a.createdAt)}
+              </time>
             </li>
           ))}
         </ul>
@@ -93,7 +123,7 @@ function levelBadge(level: OverviewAlertItem['level']): CSSProperties {
     background: c,
     padding: '2px 6px',
     borderRadius: 4,
-    alignSelf: 'flex-start',
+    alignSelf: 'start',
     textTransform: 'uppercase',
   }
 }
@@ -119,16 +149,26 @@ const listStyle: CSSProperties = {
 }
 
 const liStyle: CSSProperties = {
-  display: 'flex',
-  gap: 8,
-  padding: '8px 10px',
-  borderRadius: 8,
-  background: 'rgba(15, 23, 42, 0.4)',
-  border: '1px solid rgba(71, 85, 105, 0.34)',
+  display: 'grid',
+  gridTemplateColumns: 'auto 1fr auto',
+  gap: 10,
+  alignItems: 'start',
+  padding: '10px 12px',
+  borderRadius: 10,
+  background: 'rgba(15, 23, 42, 0.55)',
+  border: '1px solid var(--shell-border-medium)',
 }
 
 const liMain: CSSProperties = { display: 'grid', gap: 4, minWidth: 0 }
 
-const liTitle: CSSProperties = { color: '#dbe7ff', fontSize: 12 }
+const liTitle: CSSProperties = { color: '#f1f5f9', fontSize: 12, fontWeight: 600 }
 
-const liSub: CSSProperties = { color: '#9db2d3', fontSize: 11 }
+const liSub: CSSProperties = { color: '#94a3b8', fontSize: 11, lineHeight: 1.45 }
+
+const liTime: CSSProperties = {
+  fontSize: 11,
+  color: '#64748b',
+  whiteSpace: 'nowrap',
+  justifySelf: 'end',
+  marginTop: 2,
+}

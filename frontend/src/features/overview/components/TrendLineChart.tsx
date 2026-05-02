@@ -95,12 +95,12 @@ function buildTrendOption(points: OverviewTrendPoint[]): EChartsOption {
   const labels = points.map((point) => point.timestamp.slice(11, 16))
 
   return {
-    backgroundColor: '#0b1324',
+    backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
-      backgroundColor: 'rgba(10, 17, 34, 0.95)',
-      borderColor: 'rgba(71, 85, 105, 0.45)',
-      textStyle: { color: '#dbeafe' },
+      backgroundColor: 'rgba(15, 23, 42, 0.96)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      textStyle: { color: '#f8fafc' },
     },
     legend: {
       top: 0,
@@ -127,7 +127,7 @@ function buildTrendOption(points: OverviewTrendPoint[]): EChartsOption {
       type: 'value',
       axisLine: { show: false },
       axisLabel: { color: '#94a9c8' },
-      splitLine: { lineStyle: { color: 'rgba(56, 76, 103, 0.3)' } },
+      splitLine: { lineStyle: { color: 'rgba(255, 255, 255, 0.06)' } },
     },
     series: [
       {
@@ -146,6 +146,7 @@ function buildTrendOption(points: OverviewTrendPoint[]): EChartsOption {
         showSymbol: false,
         data: points.map((point) => point.memPercent),
         lineStyle: { width: 2, color: '#a78bfa' },
+        areaStyle: { color: 'rgba(167, 139, 250, 0.12)' },
       },
       {
         name: '磁盘',
@@ -154,6 +155,7 @@ function buildTrendOption(points: OverviewTrendPoint[]): EChartsOption {
         showSymbol: false,
         data: points.map((point) => point.diskPercent),
         lineStyle: { width: 2, color: '#34d399' },
+        areaStyle: { color: 'rgba(52, 211, 153, 0.12)' },
       },
     ],
   }
@@ -167,21 +169,21 @@ const chartContainerStyle: CSSProperties = {
 const tabWrapStyle: CSSProperties = {
   display: 'inline-flex',
   borderRadius: 8,
-  border: '1px solid rgba(71, 85, 105, 0.48)',
+  border: '1px solid var(--shell-border-medium)',
   overflow: 'hidden',
 }
 
 const tabStyle: CSSProperties = {
   border: 0,
   padding: '4px 10px',
-  background: 'rgba(14, 24, 45, 0.92)',
-  color: '#9fb4d4',
+  background: 'var(--shell-surface-muted)',
+  color: 'var(--text-soft)',
   cursor: 'pointer',
   fontSize: 12,
 }
 
 const activeTabStyle: CSSProperties = {
   ...tabStyle,
-  background: '#1f3f72',
-  color: '#dbeafe',
+  background: 'var(--shell-nav-active-bg)',
+  color: 'var(--heading)',
 }

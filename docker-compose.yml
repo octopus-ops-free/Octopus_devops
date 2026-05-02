@@ -1,11 +1,14 @@
 services:
   octopus:
+    # 从当前目录构建，避免一直用仓库里旧的 :latest 镜像（本地改代码后需重建才生效）
     build: .
-    image: octopus-ops:latest
+    image: octopusops/octopus-ops:latest
     container_name: octopus-ops
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      UI_MODE: react
     ports:
       - "8001:8001"
     volumes:

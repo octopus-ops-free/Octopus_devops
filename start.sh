@@ -132,16 +132,42 @@ if [[ "$DEPLOY_AGENT" =~ ^[yY](es)?$ ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# 5. 启动主项目（Octopus 运维平台）
+# 5. 构建并推送主项目镜像与远程缓存
 # -----------------------------------------------------------------------------
-log_step "构建并启动主项目 (Octopus Ops)..."
+log_step "构建并推送主项目镜像 (Octopus Ops)..."
 
-$COMPOSE_CMD up -d --build || { log_error "主项目启动失败"; exit 1; }
+if ! docker buildx version &>/dev/null; then
+    log_error "未找到 Docker Buildx，请先升级 Docker Desktop 或启用 buildx"
+    exit 1
+fi
+
+if ! docker buildx inspect octopusops-builder >/dev/null 2>&1; then
+    docker buildx create --name octopusops-builder --use >/dev/null
+else
+    docker buildx use octopusops-builder >/dev/null
+fi
+
+docker buildx build \
+    --push \
+    -t octopusops/octopus-ops:latest \
+    --cache-from type=registry,ref=octopusops/octopus-ops:buildcache \
+    --cache-to type=registry,ref=octopusops/octopus-ops:buildcache,mode=max \
+    . || { log_error "主项目构建失败"; exit 1; }
+
+log_info "主项目镜像已构建并推送"
+
+# -----------------------------------------------------------------------------
+# 6. 启动主项目容器
+# -----------------------------------------------------------------------------
+log_step "拉取并启动主项目容器..."
+
+$COMPOSE_CMD pull || { log_error "主项目镜像拉取失败"; exit 1; }
+$COMPOSE_CMD up -d || { log_error "主项目启动失败"; exit 1; }
 
 log_info "主项目已启动"
 
 # -----------------------------------------------------------------------------
-# 6. 按需启动 Agent
+# 7. 按需启动 Agent
 # -----------------------------------------------------------------------------
 if [[ "$DEPLOY_AGENT" =~ ^[yY](es)?$ ]] && [ -n "$DASHSCOPE_KEY" ]; then
     log_step "构建并启动 AI 智能体 (Agent)..."
@@ -154,7 +180,7 @@ if [[ "$DEPLOY_AGENT" =~ ^[yY](es)?$ ]] && [ -n "$DASHSCOPE_KEY" ]; then
 fi
 
 # -----------------------------------------------------------------------------
-# 7. 输出访问信息
+# 8. 输出访问信息
 # -----------------------------------------------------------------------------
 # 获取本机 IP（用于远程访问提示）
 get_local_ip() {

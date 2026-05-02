@@ -6,8 +6,13 @@ interface KpiCardsProps {
 }
 
 export function KpiCards({ snapshot }: KpiCardsProps) {
+  const cols = Math.min(Math.max(snapshot.kpis.length, 1), 6)
+  const gridStyleResolved: CSSProperties = {
+    ...gridStyle,
+    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+  }
   return (
-    <div style={gridStyle}>
+    <div style={gridStyleResolved}>
       {snapshot.kpis.map((kpi) => {
         const trendText = formatTrendText(kpi)
         return (
@@ -67,18 +72,19 @@ function pickTrendColor(kpi: OverviewKpi): string {
 
 const gridStyle: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-  gap: 10,
+  gap: 12,
 }
 
 const cardStyle: CSSProperties = {
-  minHeight: 94,
-  padding: 12,
-  borderRadius: 12,
-  border: '1px solid rgba(71, 85, 105, 0.48)',
-  background: '#0f1a2e',
+  minHeight: 96,
+  padding: 14,
+  borderRadius: 14,
+  border: '1px solid var(--shell-border-medium)',
+  background: 'var(--shell-surface)',
+  boxShadow: '0 8px 28px rgba(0, 0, 0, 0.2), inset 0 1px 0 var(--shell-inset)',
   display: 'grid',
   gap: 8,
+  transition: 'border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease',
 }
 
 const labelStyle: CSSProperties = {

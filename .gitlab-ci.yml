@@ -1,0 +1,53 @@
+# =============================================================================
+# GitLab CI/CD 自动化构建部署
+# 推送代码到 main/master 后自动构建并部署到服务器
+# =============================================================================
+
+stages:
+  - deploy
+
+variables:
+  # 部署目标：在 GitLab 设置 CI/CD Variables 中配置
+  # DEPLOY_SERVER: 如 ubuntu@1.2.3.4
+  # DEPLOY_PATH: 如 /home/ubuntu/Octopus_devops
+  # SSH_PRIVATE_KEY: 私钥内容（Variable，Type 选 Variable，不要勾选 Masked）
+  GIT_STRATEGY: clone
+  GIT_DEPTH: 1
+
+deploy:
+  stage: deploy
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache openssh-client git
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    # 写入 SSH 私钥（来自 CI/CD 变量）- 补充 base64 解码
+    - echo "$SSH_PRIVATE_KEY" | base64 -d | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    # 将部署目标加入 known_hosts，避免首次连接提示
+    - ssh-keyscan -H "${DEPLOY_SERVER#*@}" >> ~/.ssh/known_hosts 2>/dev/null || true
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - |
+      ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o PasswordAuthentication=no "$DEPLOY_SERVER" "
+        set -e
+        cd \"${DEPLOY_PATH:-~/Octopus_devops}\"
+        git fetch origin
+        git reset --hard origin/${CI_COMMIT_REF_NAME:-main}
+        # 首次部署：若无 .env 则从模板创建
+        [ -f .env ] || cp .env.example .env
+        # 创建必要目录
+        mkdir -p data AiOps_Agent/chroma_db AiOps_Agent/logs
+        # 构建并启动主项目
+        docker compose up -d --build
+        # 若 .env 中配置了 DASHSCOPE_API_KEY 且非占位符，则启动 Agent
+        if grep -q '^DASHSCOPE_API_KEY=sk-' .env 2>/dev/null; then
+          docker compose -f docker-compose.agent.yml up -d --build || true
+        fi
+        docker compose ps
+      "
+  only:
+    - main
+    - master
+  tags:
+    - docker

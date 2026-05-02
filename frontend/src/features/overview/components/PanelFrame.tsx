@@ -24,10 +24,11 @@ export function PanelFrame({ title, subtitle, extra, children }: PanelFrameProps
 }
 
 const panelStyle: CSSProperties = {
-  borderRadius: 12,
-  border: '1px solid rgba(71, 85, 105, 0.48)',
-  background: '#0b1324',
-  padding: 12,
+  borderRadius: 14,
+  border: '1px solid var(--shell-border-medium)',
+  background: 'var(--shell-surface)',
+  padding: 14,
+  boxShadow: '0 8px 28px rgba(0, 0, 0, 0.22), inset 0 1px 0 var(--shell-inset)',
 }
 
 const headerStyle: CSSProperties = {
@@ -40,8 +41,9 @@ const headerStyle: CSSProperties = {
 const titleStyle: CSSProperties = {
   margin: 0,
   fontSize: 14,
-  color: '#dbe7ff',
-  letterSpacing: 0.2,
+  fontWeight: 700,
+  color: '#f8fafc',
+  letterSpacing: 0.02,
 }
 
 const subtitleStyle: CSSProperties = {

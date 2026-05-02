@@ -14,6 +14,12 @@ import { fetchAlertTrend, fetchCronSummary } from './services/overviewApi'
 import type { OverviewTimeWindow } from './types'
 import './OverviewPage.css'
 
+const WINDOW_LABEL: Record<OverviewTimeWindow, string> = {
+  '24h': '近 24 小时',
+  '7d': '近 7 天',
+  '30d': '近 30 天',
+}
+
 function formatConnectionText(status: ReturnType<typeof useOverviewData>['connectionStatus']): string {
   if (status === 'connected') return '在线'
   if (status === 'reconnecting') return '重连中（保留上次数据）'
@@ -89,6 +95,13 @@ export function OverviewPage() {
 
   return (
     <div className="overview-page">
+      <header className="overview-page__hero">
+        <div className="overview-page__hero-text">
+          <h1 className="overview-page__hero-title">运营快照</h1>
+          <p className="overview-page__hero-sub">主机、告警、资源健康与定时任务一屏掌握；下方「分析时间窗」驱动趋势、分布与定时任务统计。</p>
+        </div>
+      </header>
+
       <section className="overview-page__top">
         <KpiCards snapshot={snapshot} />
         <div className={`overview-page__status ${formatStatusClass(connectionStatus)}`} role="status" aria-live="polite">
@@ -99,18 +112,25 @@ export function OverviewPage() {
       </section>
 
       <section className="overview-page__middle">
-        <div className="overview-page__window-toolbar" role="toolbar" aria-label="概览时间窗">
-          {(['24h', '7d', '30d'] as OverviewTimeWindow[]).map((w) => (
-            <button
-              key={w}
-              type="button"
-              className={`overview-page__window-btn${w === window ? ' overview-page__window-btn--active' : ''}`}
-              aria-pressed={w === window}
-              onClick={() => setWindow(w)}
-            >
-              {w}
-            </button>
-          ))}
+        <div className="overview-page__middle-head">
+          <div className="overview-page__middle-head-text">
+            <span className="overview-page__middle-kicker">分析时间窗</span>
+            <span className="overview-page__middle-desc">中间三栏与底部「定时任务」共用此窗</span>
+          </div>
+          <div className="overview-page__window-toolbar" role="toolbar" aria-label="概览时间窗">
+            {(['24h', '7d', '30d'] as OverviewTimeWindow[]).map((w) => (
+              <button
+                key={w}
+                type="button"
+                className={`overview-page__window-btn${w === window ? ' overview-page__window-btn--active' : ''}`}
+                aria-pressed={w === window}
+                onClick={() => setWindow(w)}
+              >
+                <span className="overview-page__window-btn-main">{WINDOW_LABEL[w]}</span>
+                <span className="overview-page__window-btn-sub">{w}</span>
+              </button>
+            ))}
+          </div>
         </div>
         <div className="overview-page__middle-columns">
           <TrendLineChart snapshot={snapshot} timeWindow={window} onTimeWindowChange={setWindow} hideTabs />

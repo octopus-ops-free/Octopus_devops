@@ -46,8 +46,10 @@ CREATE TABLE hosts (
   port INTEGER NOT NULL DEFAULT 22,
   username VARCHAR(64) NOT NULL DEFAULT 'root',
   cloud_provider VARCHAR(64),
-  ssh_private_key TEXT NOT NULL,
+  ssh_key_path VARCHAR(260),
+  ssh_private_key TEXT,
   enabled BOOLEAN NOT NULL DEFAULT 1,
+  owner_id INTEGER REFERENCES users(id),
   hostname VARCHAR(128),
   os_info VARCHAR(255),
   created_at DATETIME NOT NULL DEFAULT (CURRENT_TIMESTAMP)
@@ -57,6 +59,7 @@ CREATE TABLE hosts (
             )
             await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_hosts_name ON hosts(name)"))
             await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_hosts_ip ON hosts(ip)"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_hosts_owner_id ON hosts(owner_id)"))
         else:
             # add ssh_key_path column if missing
             if not await _has_column(conn, "hosts", "ssh_key_path"):

@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>Octopus Ops 终端控制台</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.5.0/css/xterm.css" />
+  <style>
+    :root {
+      --bg: #090b0f;
+      --bg-soft: #0a0c10;
+      --surface: #12151b;
+      --surface-muted: #0e1016;
+      --surface-raised: #161a22;
+      --surface-border: rgba(255, 255, 255, 0.075);
+      --surface-border-strong: rgba(255, 255, 255, 0.1);
+      --accent: #161a22;
+      --accent-hover: #1c212c;
+      --accent-text: #e8eaed;
+      --text-main: #e8eaed;
+      --text-muted: #9aa3af;
+      --shadow-strong: 0 24px 70px rgba(0, 0, 0, 0.55);
+      --terminal-bg: #0a0c10;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      min-height: 100vh;
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text-main);
+      background:
+        radial-gradient(1000px 600px at 0% 0%, rgba(255, 255, 255, 0.03), transparent 55%),
+        linear-gradient(160deg, #090b0f 0%, #0a0c10 55%, #0e1016 100%);
+    }
+    .shell { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; }
+    .topbar {
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+      padding: 14px 18px; background: rgba(9, 11, 15, 0.92);
+      border-bottom: 1px solid var(--surface-border-strong);
+      backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 20;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+    .logo {
+      width: 24px; height: 24px; border-radius: 10px;
+      background: linear-gradient(135deg, #2a2f38 0%, #161a22 100%);
+      box-shadow: 0 0 0 1px var(--surface-border-strong);
+    }
+    .status-pill {
+      font-size: 12px; color: var(--text-muted); padding: 5px 10px; border-radius: 999px;
+      border: 1px solid var(--surface-border-strong); background: var(--surface-muted);
+    }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    button, .link-btn {
+      border: 1px solid var(--surface-border-strong); border-radius: 10px; padding: 10px 14px; font-weight: 700; font-size: 13px;
+      cursor: pointer; color: var(--accent-text); background: var(--accent); text-decoration: none;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    button:hover, .link-btn:hover { background: var(--accent-hover); border-color: rgba(255, 255, 255, 0.14); }
+    .secondary { color: var(--text-main); background: var(--surface-muted); border: 1px solid var(--surface-border); }
+    .secondary:hover { background: var(--surface-raised); }
+    .main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; padding: 16px; min-height: 0; }
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--surface-border-strong); border-radius: 18px; box-shadow: var(--shadow-strong); backdrop-filter: blur(10px);
+    }
+    .connect { padding: 16px; margin-bottom: 16px; }
+    h2 { margin: 0 0 10px; font-size: 16px; }
+    .sub { margin: 0 0 14px; font-size: 13px; color: var(--text-muted); }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    label { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+    input, textarea, select {
+      width: 100%; border-radius: 10px; border: 1px solid var(--surface-border-strong);
+      background: var(--surface-muted); color: var(--text-main); padding: 11px 12px; font-size: 14px;
+    }
+    textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .tabs { display: flex; gap: 8px; margin: 14px 0 10px; }
+    .tab {
+      padding: 9px 14px; border-radius: 999px; border: 1px solid var(--surface-border);
+      background: var(--surface-muted); color: var(--text-main); cursor: pointer; font-size: 13px;
+    }
+    .tab.active { background: rgba(255, 255, 255, 0.072); border-color: rgba(255, 255, 255, 0.11); }
+    .auth-panel { display: none; margin-top: 10px; }
+    .auth-panel.active { display: block; }
+    .terminal { min-height: 560px; display: flex; flex-direction: column; overflow: hidden; }
+    .terminal-head {
+      display: flex; justify-content: space-between; gap: 10px; align-items: center;
+      padding: 14px 16px; border-bottom: 1px solid var(--surface-border); background: var(--surface-muted);
+    }
+    .terminal-head strong { font-size: 14px; }
+    .terminal-head span { color: var(--text-muted); font-size: 12px; }
+    .terminal-body {
+      flex: 1; min-height: 460px; background: var(--terminal-bg);
+      padding: 12px; overflow: hidden;
+    }
+    #terminal {
+      width: 100%;
+      height: 100%;
+      min-height: 520px;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    #terminal-fallback {
+      display: none;
+      width: 100%;
+      height: 100%;
+      min-height: 520px;
+      margin: 0;
+      padding: 12px;
+      overflow: auto;
+      border-radius: 12px;
+      background: var(--terminal-bg);
+      color: #d1d5db;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+    }
+    .terminal-input {
+      border-top: 1px solid var(--surface-border); padding: 12px; background: var(--surface-muted);
+      display: grid; gap: 10px;
+    }
+    .terminal-input textarea { min-height: 92px; }
+    .sidebar { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+    .kv { display: grid; grid-template-columns: 92px 1fr; gap: 8px 10px; font-size: 13px; }
+    .kv div:nth-child(odd) { color: var(--text-muted); }
+    .muted { color: var(--text-muted); font-size: 12px; }
+    .stack { display: flex; flex-direction: column; gap: 10px; }
+    .list-item {
+      padding: 10px 12px; border-radius: 10px; background: var(--surface-muted);
+      border: 1px solid var(--surface-border-strong); font-size: 13px;
+    }
+    .status-line {
+      padding: 10px 16px; border-top: 1px solid var(--surface-border);
+      font-size: 12px; color: var(--text-muted); background: var(--surface-muted);
+    }
+    @media (max-width: 1080px) {
+      .main { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .topbar, .main { padding-left: 12px; padding-right: 12px; }
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    /* 嵌入 React /ui/terminal：与主 shell 同底，去掉重复顶栏（class 挂在 html） */
+    html.embed,
+    html.embed body {
+      height: 100%;
+      min-height: 100%;
+    }
+    html.embed body {
+      background: var(--bg);
+    }
+    html.embed .shell {
+      min-height: 100%;
+    }
+    html.embed .topbar {
+      display: none;
+    }
+    html.embed .main {
+      padding: 0;
+      gap: 12px;
+      min-height: 0;
+    }
+    html.embed .panel {
+      box-shadow: none;
+    }
+    /* xterm 默认浅色描边/视口底，压成灰黑 */
+    .xterm {
+      padding: 0;
+    }
+    .xterm-viewport {
+      background-color: var(--terminal-bg) !important;
+    }
+    .xterm-screen canvas {
+      z-index: 1;
+    }
+    .xterm.focus .xterm-helpers textarea:focus {
+      outline: none !important;
+    }
+  </style>
+  <script>
+    (function () {
+      try {
+        var q = typeof location !== 'undefined' && location.search ? location.search : '';
+        if (/\bembed=1\b/.test(q) || (typeof window !== 'undefined' && window.self !== window.top)) {
+          document.documentElement.classList.add('embed');
+        }
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div class="brand"><span class="logo"></span><span>Octopus Ops 终端控制台</span></div>
+      <div class="actions">
+        <span id="terminal-status" class="status-pill">未连接</span>
+        <a class="link-btn secondary" href="/ui">返回控制台</a>
+      </div>
+    </div>
+
+    <div class="main">
+      <div>
+        <div class="panel connect">
+          <h2>连接目标</h2>
+          <p class="sub">使用真实 `xterm.js` 前端连接后端 WebSocket，再由后端建立 SSH PTY 会话。</p>
+          <div class="grid">
+            <div class="field">
+              <label>主机地址</label>
+              <input id="host" placeholder="192.168.1.10" />
+            </div>
+            <div class="field">
+              <label>端口</label>
+              <input id="port" type="number" value="22" />
+            </div>
+            <div class="field">
+              <label>用户名</label>
+              <input id="username" placeholder="root / ubuntu" />
+            </div>
+            <div class="field">
+              <label>最近会话</label>
+              <select id="recent-hosts">
+                <option value="">选择一个最近连接</option>
+                <option value="192.168.1.10|22|root">192.168.1.10 / root</option>
+                <option value="10.0.0.12|22|ubuntu">10.0.0.12 / ubuntu</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="tabs" role="tablist" aria-label="认证方式">
+            <button class="tab active" data-tab="password">密码登录</button>
+            <button class="tab" data-tab="key">SSH 私钥登录</button>
+          </div>
+
+          <div id="auth-password" class="auth-panel active">
+            <div class="grid" style="grid-template-columns: 1fr 1fr;">
+              <div class="field">
+                <label>密码</label>
+                <input id="password" type="password" placeholder="请输入密码" />
+              </div>
+              <div class="field">
+                <label>会话名称（可选）</label>
+                <input id="session-name-pwd" placeholder="prod-shell" />
+              </div>
+            </div>
+          </div>
+
+          <div id="auth-key" class="auth-panel">
+            <div class="grid" style="grid-template-columns: 1fr 1fr;">
+              <div class="field">
+                <label>私钥内容</label>
+                <textarea id="private-key" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----&#10;..."></textarea>
+              </div>
+              <div class="field">
+                <label>Passphrase（可选）</label>
+                <input id="passphrase" type="password" placeholder="如有请填写" />
+              </div>
+            </div>
+          </div>
+
+          <div class="actions" style="margin-top: 14px;">
+            <button id="btn-connect">连接</button>
+            <button id="btn-disconnect" class="secondary">断开</button>
+            <button id="btn-reconnect" class="secondary">重连</button>
+            <button id="btn-clear" class="secondary">清屏</button>
+          </div>
+          <div class="muted" id="connect-tip" style="margin-top: 10px;">提示：输入命令后回车即可发送到远端 PTY。</div>
+        </div>
+
+        <div class="panel terminal">
+          <div class="terminal-head">
+            <div>
+              <strong>终端输出</strong>
+              <div><span id="terminal-headline">等待连接...</span></div>
+            </div>
+            <div class="muted" id="terminal-meta">xterm.js + WebSocket + SSH PTY</div>
+          </div>
+          <div class="terminal-body">
+            <div id="terminal"></div>
+            <pre id="terminal-fallback"></pre>
+          </div>
+          <div class="terminal-input">
+            <textarea id="terminal-input" placeholder="在这里输入命令并发送到远端 shell..."></textarea>
+            <div class="actions">
+              <button id="btn-send">发送命令</button>
+              <button id="btn-enter-shell" class="secondary">发送 Enter</button>
+            </div>
+          </div>
+          <div class="status-line" id="terminal-foot">未建立 SSH 连接。</div>
+        </div>
+      </div>
+
+      <aside class="panel sidebar">
+        <div>
+          <h2>会话信息</h2>
+          <div class="kv">
+            <div>主机</div><div id="info-host">-</div>
+            <div>端口</div><div id="info-port">-</div>
+            <div>用户</div><div id="info-user">-</div>
+            <div>认证</div><div id="info-auth">-</div>
+            <div>状态</div><div id="info-state">未连接</div>
+          </div>
+        </div>
+
+        <div>
+          <h2>快捷操作</h2>
+          <div class="stack">
+            <div class="list-item">支持密码 / 私钥两种连接方式</div>
+            <div class="list-item">使用后端 SSH PTY 做真实交互</div>
+            <div class="list-item">支持方向键、粘贴、清屏和重连</div>
+          </div>
+        </div>
+
+        <div>
+          <h2>最近会话</h2>
+          <div class="stack" id="recent-list">
+            <div class="list-item">192.168.1.10 · root · 密码登录</div>
+            <div class="list-item">10.0.0.12 · ubuntu · 私钥登录</div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.5.0/lib/xterm.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+  <script>
+    const state = {
+      auth: "password",
+      connected: false,
+      socket: null,
+      current: { host: "", port: "22", username: "" },
+      managedHosts: [],
+      selectedManagedHostId: null,
+      terminal: null,
+      fitAddon: null,
+      ready: false,
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function appendFallback(text) {
+      const box = $("terminal-fallback");
+      box.style.display = "block";
+      box.textContent += text;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function getAccessToken() {
+      try {
+        const raw = localStorage.getItem("octopus_tokens_v1");
+        if (!raw) return "";
+        const parsed = JSON.parse(raw);
+        return parsed?.accessToken || "";
+      } catch (_) {
+        return "";
+      }
+    }
+
+    function setStatus(text) {
+      $("terminal-status").textContent = text;
+      $("info-state").textContent = text;
+    }
+
+    function setAuth(kind) {
+      state.auth = kind;
+      document.querySelectorAll(".tab").forEach((btn) => btn.classList.toggle("active", btn.dataset.tab === kind));
+      document.querySelectorAll(".auth-panel").forEach((panel) => panel.classList.toggle("active", panel.id === "auth-" + kind));
+      $("info-auth").textContent = kind === "password" ? "密码登录" : "SSH 私钥登录";
+    }
+
+    function syncInfo() {
+      $("info-host").textContent = state.current.host || "-";
+      $("info-port").textContent = state.current.port || "-";
+      $("info-user").textContent = state.current.username || "-";
+      $("info-auth").textContent = state.auth === "password" ? "密码登录" : "SSH 私钥登录";
+    }
+
+    function initTerminal() {
+      try {
+        if (typeof Terminal === "undefined" || !window.FitAddon) {
+          throw new Error("xterm.js 资源未加载");
+        }
+        const term = new Terminal({
+          cursorBlink: true,
+          convertEol: true,
+          fontFamily: 'Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+          fontSize: 14,
+          theme: {
+            background: '#0a0c10',
+            foreground: '#d1d5db',
+            cursor: '#9ca3af',
+            selection: 'rgba(255,255,255,0.12)',
+          },
+        });
+        const fitAddon = new FitAddon.FitAddon();
+        term.loadAddon(fitAddon);
+        term.open($("terminal"));
+        fitAddon.fit();
+        term.writeln('\x1b[1;32mOctopus Ops Web Terminal\x1b[0m');
+        term.writeln('输入主机信息并点击“连接”。');
+        term.writeln('');
+        term.write('$ ');
+        term.onData((data) => {
+          if (!state.connected || !state.socket) {
+            return;
+          }
+          state.socket.send(JSON.stringify({ type: 'input', data }));
+        });
+        window.addEventListener('resize', () => {
+          try {
+            fitAddon.fit();
+            if (state.connected && state.socket) {
+              state.socket.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+            }
+          } catch (err) {
+            console.warn(err);
+          }
+        });
+        state.terminal = term;
+        state.fitAddon = fitAddon;
+        state.ready = true;
+      } catch (err) {
+        state.terminal = null;
+        state.fitAddon = null;
+        state.ready = false;
+        $("terminal-foot").textContent = `xterm 初始化失败，已切换文本模式：${err?.message || err}`;
+        appendFallback("[fallback] xterm not available, using plain text output\n");
+      }
+    }
+
+    function resetTerminal() {
+      if (!state.terminal) {
+        $("terminal-fallback").textContent = "";
+        return;
+      }
+      state.terminal.reset();
+      state.terminal.writeln('\x1b[1;32mOctopus Ops Web Terminal\x1b[0m');
+      state.terminal.writeln('');
+      state.terminal.write('$ ');
+      state.fitAddon.fit();
+    }
+
+    function connect() {
+      const host = $("host").value.trim();
+      const port = $("port").value.trim() || "22";
+      const username = $("username").value.trim();
+      const password = $("password").value;
+      const privateKey = $("private-key").value;
+      const passphrase = $("passphrase").value;
+      if (!host || !username) {
+        setStatus("请先填写主机地址和用户名");
+        return;
+      }
+      state.current = { host, port, username };
+      syncInfo();
+      setStatus("连接中...");
+      $("terminal-foot").textContent = "正在建立 SSH PTY 会话...";
+      if (state.socket) {
+        try { state.socket.close(); } catch (_) {}
+      }
+      state.connected = false;
+      const wsScheme = location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const ws = new WebSocket(`${wsScheme}//${location.host}/api/terminal/ws`);
+      state.socket = ws;
+      ws.onopen = () => {
+        if (state.socket !== ws) return;
+        const hostId = Number($("recent-hosts").value || 0);
+        if (hostId > 0) {
+          const accessToken = getAccessToken();
+          ws.send(JSON.stringify({
+            type: 'connect',
+            host_id: hostId,
+            access_token: accessToken,
+          }));
+          return;
+        }
+        ws.send(JSON.stringify({
+          type: 'connect',
+          host,
+          port: Number(port),
+          username,
+          password,
+          private_key: privateKey,
+          passphrase,
+        }));
+      };
+      ws.onmessage = (event) => {
+        if (state.socket !== ws) return;
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'ready') {
+          state.connected = true;
+          setStatus('已连接');
+          $("terminal-headline").textContent = `${username}@${host}:${port}`;
+          $("terminal-foot").textContent = 'SSH PTY 会话已建立。';
+          resetTerminal();
+          if (state.fitAddon && state.terminal) {
+            ws.send(JSON.stringify({ type: 'resize', cols: state.terminal.cols, rows: state.terminal.rows }));
+          }
+          return;
+        }
+        if (msg.type === 'output' && state.terminal) {
+          state.terminal.write(msg.data);
+          return;
+        }
+        if (msg.type === 'output') {
+          appendFallback(msg.data);
+          return;
+        }
+        if (msg.type === 'error') {
+          $("terminal-foot").textContent = msg.message;
+          setStatus('错误');
+          if (state.terminal) {
+            state.terminal.writeln(`\r\n\x1b[31m[error]\x1b[0m ${msg.message}`);
+            state.terminal.write('\r\n$ ');
+          }
+          return;
+        }
+      };
+      ws.onclose = () => {
+        if (state.socket !== ws) return;
+        state.connected = false;
+        state.socket = null;
+        setStatus('已断开');
+        $("terminal-headline").textContent = '等待连接...';
+        $("terminal-foot").textContent = 'SSH 连接已关闭。';
+        if (state.terminal) {
+          state.terminal.writeln('\r\n\x1b[33m[session closed]\x1b[0m');
+        }
+      };
+      ws.onerror = () => {
+        if (state.socket !== ws) return;
+        $("terminal-foot").textContent = 'WebSocket 连接失败。';
+      };
+    }
+
+    function disconnect() {
+      if (state.socket) {
+        try {
+          state.socket.send(JSON.stringify({ type: 'close' }));
+          state.socket.close();
+        } catch (_) {}
+        state.socket = null;
+      }
+      state.connected = false;
+      setStatus('已断开');
+      $("terminal-headline").textContent = '等待连接...';
+      $("terminal-foot").textContent = 'SSH 连接已关闭。';
+      if (state.terminal) {
+        state.terminal.writeln('\r\n\x1b[33m[disconnected]\x1b[0m');
+        state.terminal.write('$ ');
+      }
+    }
+
+    function reconnect() {
+      if (!state.current.host) {
+        setStatus('请先建立一次连接');
+        return;
+      }
+      connect();
+    }
+
+    function clearTerminal() {
+      resetTerminal();
+      $("terminal-foot").textContent = '终端内容已清空。';
+    }
+
+    function sendCommand(forceEnter = false) {
+      const wsOpen = !!state.socket && state.socket.readyState === WebSocket.OPEN;
+      if (!wsOpen) {
+        $("terminal-foot").textContent = `连接不可用（wsOpen=${wsOpen} terminal=${!!state.terminal} connected=${state.connected}）。`;
+        return;
+      }
+      // Some browsers can briefly desync `connected` state when old/new sockets race.
+      // If socket is open, allow command sending and let backend/pty decide.
+      if (!state.connected) {
+        $("terminal-foot").textContent = '连接状态同步中，已尝试发送命令...';
+      }
+      const ta = $("terminal-input");
+      const cmd = ta.value;
+      if (!cmd.trim() && !forceEnter) {
+        $("terminal-foot").textContent = '请输入要发送的命令。';
+        return;
+      }
+      if (forceEnter) {
+        state.socket.send(JSON.stringify({ type: 'input', data: '\r' }));
+        $("terminal-foot").textContent = '已发送 Enter。';
+        return;
+      }
+      state.socket.send(JSON.stringify({ type: 'input', data: cmd + '\r' }));
+      if (state.terminal) {
+        state.terminal.write(cmd + '\r\n');
+      } else {
+        appendFallback(`$ ${cmd}\n`);
+      }
+      ta.value = '';
+      $("terminal-foot").textContent = `已发送：${cmd.trim()}`;
+    }
+
+    document.querySelectorAll('.tab').forEach((btn) => btn.addEventListener('click', () => setAuth(btn.dataset.tab)));
+    $("btn-connect").addEventListener('click', connect);
+    $("btn-disconnect").addEventListener('click', disconnect);
+    $("btn-reconnect").addEventListener('click', reconnect);
+    $("btn-clear").addEventListener('click', clearTerminal);
+    $("btn-send").addEventListener('click', () => sendCommand(false));
+    $("btn-enter-shell").addEventListener('click', () => sendCommand(true));
+
+    async function loadManagedHosts() {
+      const token = getAccessToken();
+      if (!token) {
+        $("connect-tip").textContent = "未检测到登录 token，资产主机列表不可用，可手动输入连接。";
+        return;
+      }
+      try {
+        const resp = await fetch('/api/hosts', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!resp.ok) {
+          throw new Error(`加载主机失败：${resp.status}`);
+        }
+        const hosts = await resp.json();
+        state.managedHosts = Array.isArray(hosts) ? hosts : [];
+        const select = $("recent-hosts");
+        select.innerHTML = '<option value="">选择已添加资产（自动密钥登录）</option>';
+        state.managedHosts
+          .filter((h) => h && h.enabled)
+          .forEach((h) => {
+            const option = document.createElement("option");
+            option.value = String(h.id);
+            option.textContent = `${h.name} (${h.ip}:${h.port}) / ${h.username}`;
+            select.appendChild(option);
+          });
+      } catch (err) {
+        $("connect-tip").textContent = `资产主机加载失败：${err?.message || err}`;
+      }
+    }
+
+    $("recent-hosts").addEventListener('change', (e) => {
+      const hostId = Number(e.target.value || 0);
+      state.selectedManagedHostId = hostId > 0 ? hostId : null;
+      if (!state.selectedManagedHostId) return;
+      const host = state.managedHosts.find((h) => Number(h.id) === state.selectedManagedHostId);
+      if (!host) return;
+      $("host").value = host.ip || '';
+      $("port").value = String(host.port || 22);
+      $("username").value = host.username || '';
+      $("password").value = '';
+      $("private-key").value = '';
+      $("passphrase").value = '';
+      setAuth('key');
+      state.current = { host: host.ip || '', port: String(host.port || 22), username: host.username || '' };
+      syncInfo();
+      $("terminal-foot").textContent = '已填充资产主机，将自动使用保存的密钥登录。';
+    });
+
+    $("host").addEventListener('input', syncInfo);
+    $("port").addEventListener('input', syncInfo);
+    $("username").addEventListener('input', syncInfo);
+    $("terminal-input").addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        sendCommand(false);
+      }
+    });
+
+    initTerminal();
+    loadManagedHosts();
+    setAuth('password');
+    syncInfo();
+  </script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+:root {
+  /* 应用壳层：低调灰黑，边框与底色拉近，避免「亮框浮在深色上」 */
+  --shell-bg: #090b0f;
+  --shell-sidebar-bg: #0a0c10;
+  --shell-surface: #12151b;
+  --shell-surface-muted: #0e1016;
+  --shell-surface-raised: #161a22;
+  --shell-border: rgba(255, 255, 255, 0.055);
+  --shell-border-medium: rgba(255, 255, 255, 0.075);
+  --shell-border-strong: rgba(255, 255, 255, 0.1);
+  --shell-nav-active-bg: rgba(255, 255, 255, 0.072);
+  --shell-nav-active-border: rgba(255, 255, 255, 0.11);
+  --shell-inset: rgba(255, 255, 255, 0.035);
+  --shell-brand-mark: #2a2f38;
+
+  --bg-0: var(--shell-bg);
+  --bg-1: var(--shell-bg);
+  --bg-2: var(--shell-surface);
+  --surface: rgba(18, 21, 27, 0.92);
+  --surface-strong: rgba(22, 26, 34, 0.96);
+  --border: var(--shell-border-strong);
+  --text: #c9ced6;
+  --text-soft: #8f97a3;
+  --heading: #e8eaed;
+  --primary: #aeb6c2;
+  --primary-hover: #c5ccd6;
+  --primary-soft: rgba(255, 255, 255, 0.08);
+  --danger: #e57373;
+  --focus: 0 0 0 2px rgba(255, 255, 255, 0.14);
+  --shadow-strong: 0 18px 50px rgba(0, 0, 0, 0.45);
+  --radius: 14px;
+  --font: Inter, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--bg-0);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--heading);
+  letter-spacing: 0.01em;
+  margin-top: 0;
+}
+
+h1 {
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+
+h2 {
+  font-size: 22px;
+  margin-bottom: 8px;
+}
+
+h3 {
+  font-size: 17px;
+  margin-bottom: 8px;
+}
+
+label {
+  color: var(--text-soft);
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  background: var(--shell-surface-muted);
+  border: 1px solid var(--shell-border-medium);
+  border-radius: 10px;
+  color: var(--text);
+  outline: none;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible,
+a:focus-visible {
+  box-shadow: var(--focus);
+}
+
+button {
+  min-height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--shell-border-strong);
+  background: var(--shell-surface);
+  color: var(--text);
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+button:hover {
+  background: var(--shell-surface-raised);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+table {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+th {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+pre {
+  border: 1px solid var(--border);
+}
+
+a {
+  color: var(--primary);
+}
