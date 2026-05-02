@@ -1,17 +1,51 @@
 from __future__ import annotations
 
 import datetime as dt
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.schemas import AlertEventOut, AlertTriggerIn, AlertTriggerOut, ThresholdOut, ThresholdUpsert
+from app.api.schemas import (
+    AlertEventOut,
+    AlertTrendBucketOut,
+    AlertTrendOut,
+    AlertTriggerIn,
+    AlertTriggerOut,
+    ThresholdOut,
+    ThresholdUpsert,
+)
 from app.core.deps import get_current_user, require_admin
 from app.db.models import AlertEvent, AlertThreshold, AlertTrigger, User
 from app.db.session import get_db
+from app.services.alert_trend import Window, aggregate_alert_events, window_start_utc
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
+
+
+@router.get("/trend", response_model=AlertTrendOut)
+async def alert_trend(
+    window: str = Query(default="24h", pattern="^(24h|7d|30d)$"),
+    host: str | None = Query(default=None, description="与 alert_events.host 精确匹配；不传则全主机"),
+    db: AsyncSession = Depends(get_db),
+    _user: User = Depends(get_current_user),
+) -> AlertTrendOut:
+    if window not in ("24h", "7d", "30d"):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="invalid window")
+    w = cast(Window, window)
+    now = dt.datetime.now(dt.timezone.utc)
+    start = window_start_utc(now, w)
+    stmt = select(AlertEvent).where(AlertEvent.created_at >= start)
+    if host:
+        stmt = stmt.where(AlertEvent.host == host)
+    res = await db.scalars(stmt)
+    rows = [{"host": r.host, "level": r.level, "created_at": r.created_at} for r in list(res)]
+    raw = aggregate_alert_events(rows, now=now, window=w, host_filter=None)
+    return AlertTrendOut(
+        window=str(raw["window"]),
+        buckets=[AlertTrendBucketOut(**b) for b in raw["buckets"]],
+    )
 
 
 @router.get("/thresholds", response_model=list[ThresholdOut])
@@ -53,12 +87,15 @@ async def upsert_threshold(
 async def list_events(
     limit: int = Query(default=100, ge=1, le=1000),
     include_resolved: bool = Query(default=False, description="是否包含已完成告警"),
+    since: dt.datetime | None = Query(default=None, description="仅返回该时间之后的活动告警"),
     db: AsyncSession = Depends(get_db),
     _user: User = Depends(get_current_user),
 ) -> list[AlertEventOut]:
     q = select(AlertEvent)
     if not include_resolved:
         q = q.where(AlertEvent.resolved.is_(False))
+    if since is not None:
+        q = q.where(AlertEvent.created_at >= since)
     q = q.order_by(desc(AlertEvent.created_at)).limit(limit)
     res = await db.scalars(q)
     return [AlertEventOut.model_validate(r, from_attributes=True) for r in list(res)]
@@ -67,12 +104,15 @@ async def list_events(
 @router.get("/events/history", response_model=list[AlertEventOut])
 async def list_history_events(
     limit: int = Query(default=200, ge=1, le=2000),
+    since: dt.datetime | None = Query(default=None, description="仅返回该时间之后的历史告警"),
     db: AsyncSession = Depends(get_db),
     _user: User = Depends(get_current_user),
 ) -> list[AlertEventOut]:
-    res = await db.scalars(
-        select(AlertEvent).where(AlertEvent.resolved.is_(True)).order_by(desc(AlertEvent.resolved_at), desc(AlertEvent.created_at)).limit(limit)
-    )
+    q = select(AlertEvent).where(AlertEvent.resolved.is_(True))
+    if since is not None:
+        q = q.where(AlertEvent.created_at >= since)
+    q = q.order_by(desc(AlertEvent.resolved_at), desc(AlertEvent.created_at)).limit(limit)
+    res = await db.scalars(q)
     return [AlertEventOut.model_validate(r, from_attributes=True) for r in list(res)]
 
 
