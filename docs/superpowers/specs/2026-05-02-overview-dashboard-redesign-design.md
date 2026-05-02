@@ -6,6 +6,17 @@
 
 ---
 
+## 0. 文档流程（固定）
+
+后续同类需求按此顺序执行，避免设计与实现脱节：
+
+1. **编写 / 更新本 Spec**（唯一需求来源，路径：`docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`）。
+2. **用户回复「spec 确认」** 后，对 Spec 做 **receiving-code-review 式技术审查**（对照代码与数据模型，查歧义、缺口、与现状冲突；不通过则改 Spec 再确认）。
+3. 审查通过后，使用 **writing-plans** 生成 `docs/superpowers/plans/YYYY-MM-DD-<feature>.md` 实现计划。
+4. 按计划实现；大改动优先 **subagent-driven-development** 或 **executing-plans**（与计划文档头部说明一致）。
+
+---
+
 ## 1. 背景与目标
 
 将首页布局对齐参考图一（上 KPI、中三栏、下三栏、底快速入口），并完成：
@@ -59,15 +70,16 @@
 
 ### 4.1 当前检测主机与 IP
 
-- 概览默认 `useOverviewData` 使用 `DEFAULT_FILTERS.host`（当前为 **host id**，如 `'1'`）。
-- 展示 IP：在 `fetchOverviewSnapshot` 或新增轻量 `GET /api/hosts/{id}` 已存在则复用；将 **`monitoredHostIp`**（及可选 `monitoredHostName`）写入 `OverviewSnapshot` 扩展字段，供资源健康、定时任务卡片副标题使用。
-- 若仅 id 无 IP：显示 `主机：未知` 并沿用 id 拉数。
+- 概览默认 `useOverviewData` 使用 `DEFAULT_FILTERS.host`（当前实现为字符串，常见为 **主机在库中的 id 字符串**，如 `'1'`，用于 `resources` 等按 id 调用的接口）。
+- **与监控数据对齐（重要）**：`HostMetric.host` 存的是 **`Host.name`**（见 `save_remote_linux_metrics`），`/api/monitoring/metrics?host=` 的 `host` 查询参数必须与库中 `Host.name` 一致。实现上须：**由当前选中的 Host 记录解析出 `name`（metrics）、`ip`（展示）、`id`（SSH 扩展接口）**，禁止把数字 id 直接当作 `metrics` 的 `host` 传参除非该主机 `name` 恰好为该字符串。
+- 展示 IP：复用 `GET /api/hosts`（已有）或按 id 查库；将 **`monitoredHostIp`**、**`monitoredHostName`** 写入 `OverviewSnapshot`（或并行请求后由前端持有），供资源健康、定时任务卡片副标题使用。
+- 若无法解析 IP：副标题显示 `主机：未知`；metrics 仍使用已解析的 `Host.name`，解析失败时回退 `local` 并在 `degradedSources` 中标记（与现网行为一致）。
 
 ### 4.2 告警趋势（24h / 7d / 30d）
 
-- 数据源：`/api/alerts/events` 与 `/api/alerts/events/history`（或新参数 `since=` / `limit=` 由后端裁剪时间窗），按时间桶聚合（例如 24h 用小时桶，7d/30d 用日桶或自适应桶宽）。
-- 前端：`OverviewSnapshot` 增加 `alertTrend: { bucketStart, countsByLevel }[]` 或由独立请求 `GET /api/overview/alert-trend?host_id=&window=` 返回；**推荐独立接口** 避免首屏 payload 过大。
-- 折线系列：至少 **critical / warning / info**（与告警规则页一致）；其余等级可并入「其他」或单独系列（实现时二选一，默认三主线 + 图例）。
+- **现状**：`/api/alerts/events` 与 `/api/alerts/events/history` 仅有 `limit`，无 `since` / 无按 `host` 过滤；库中 `AlertEvent.level` 与前端展示级别需经现有映射统一。
+- **目标接口**：新增 **`GET /api/alerts/trend?window=24h|7d|30d&host=`**（`host` 可选，与告警事件 `AlertEvent.host` 字符串一致；未传则全量）。服务端合并活动+历史（或单表按 `resolved` 区分）在 `created_at >= now - window` 范围内 **按时间桶聚合**，返回 `{ buckets: { start: ISO8601, counts: Record<levelKey, number> }[] }`，避免前端拉全量再聚合。
+- 折线系列：至少 **critical / warning / info**（与告警规则页一致）；`high`/`medium`/`low` 可合并为 **「其他」** 一条线或单独系列（实现选定一种并在响应中固定字段名）。
 
 ### 4.3 定时任务统计（真实 SSH）
 
@@ -85,8 +97,9 @@
 
 ### 4.4 合并列表排序
 
-- 列表数据：`buildAlerts` 合并活动+历史后，**先按等级权重降序，再按 `createdAt` 降序**。
-- 分布图：仍基于当前窗内或全量告警集合（与产品确认：**分布与列表同一数据源** — 与所选时间窗一致；若告警趋势用 7d，则合并卡片分布与列表也过滤为 7d）。**本设计约定**：合并卡片受 **告警趋势同一 `window`** 控制（UI 上两个组件共享 `window` state 或由 snapshot 携带当前窗）。
+- 列表数据：与 **4.2 同一时间窗** 内的事件合并后，**先按等级权重降序**（`critical > high > warning > medium > info > low`），**再按 `createdAt` 降序**。
+- 分布图：与列表 **同一批过滤后的事件** 计算等级分布（环形/柱状），保证图与表一致。
+- **UI 状态**：告警趋势图与「告警概览」合并卡片 **共享 `window`（24h / 7d / 30d）**；`OverviewPage` 提升 state 或提取 `useOverviewAlertWindow()`，避免两处不同步。
 
 ---
 
@@ -127,3 +140,20 @@
 ## 8. 后续
 
 用户确认本设计后，使用 **writing-plans** 产出实现计划（含 API 契约、文件列表、测试清单）。
+
+---
+
+## 9. Spec 技术审查记录（receiving-code-review）
+
+**审查日期**：2026-05-02  
+**对照物**：`app/api/alerts.py`、`app/api/monitoring.py`、`app/services/monitoring.py`、`app/api/hosts.py`、`frontend/src/features/overview/hooks/useOverviewData.ts`、`frontend/src/features/overview/services/overviewApi.ts`
+
+| 项 | 结论 |
+|----|------|
+| Spec 原写「`GET /api/hosts/{id}`」 | `hosts` 路由已有列表 `GET /api/hosts`，无单独 `GET /api/hosts/{id}`；实现以列表或单次 `db.get(Host, id)` 服务内解析即可，Spec §4.1 已改为不依赖不存在的路径。 |
+| `metrics?host=` 与「host id」 | 代码层面 `HostMetric.host` 使用 **`Host.name`**；Spec 已明确 id 与 name 的解析关系，避免静默查不到曲线。 |
+| 告警接口缺 `since` | 与 Spec 目标一致；**须新增聚合接口**（§4.2 已改为 `/api/alerts/trend`），不能仅依赖增大 `limit` 在前端聚合（性能与正确性不达标）。 |
+| `AlertEvent.level` 与 UI `info/warning/critical` | 并存多种历史取值；聚合与排序须复用或对齐 `overviewApi.mapAlertLevel` 同一套归一化规则。 |
+| `/api/overview/ws` | 前端已连接；后端是否存在不影响本 Spec 范围，但若改 `OverviewSnapshot` 形状，须同步任何推送 snapshot 的生成端（若有）。本迭代以 **REST 扩展 + 前端拉取** 为主。 |
+
+**审查结论**：Spec 经上述修正后可作为实现依据；无阻塞项。
